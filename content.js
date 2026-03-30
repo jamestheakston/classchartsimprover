@@ -8,8 +8,11 @@ const IMPROVED_UI_KEY = 'classcharts_improver_improved_ui_enabled';
 const PLUS_ONE_ICON_KEY = 'classcharts_improver_plus_one_icon';
 const HOMEWORK_DATE_HINT_KEY = 'classcharts_improver_homework_date_hint_enabled';
 const HOMEWORK_REDESIGN_KEY = 'classcharts_improver_homework_redesign_enabled';
+const ACCENT_COLOR_KEY = 'classcharts_improver_accent_color';
 const MESSAGE_MENU_SELECTOR = '.MuiButtonBase-root.MuiListItem-root.desktop-drawer-pupil-menu-item:last-child';
-const PRIMARY_BLUE = '#039BE5';
+const DEFAULT_ACCENT_BLUE = '#039BE5';
+// Backwards-compat constant used throughout injected CSS.
+const PRIMARY_BLUE = 'var(--cc-improver-accent, #039BE5)';
 const LIGHT_GREY = '#f5f5f5';
 const POSITIVE_GREEN = '#4CAF50';
 const NOTES_ICON_FILE = 'edit-3.svg';
@@ -22,6 +25,162 @@ const MONITOR_ICON_FILE = 'monitor.svg';
 const PROFILE_IMAGE_DEFAULT_SRC_PATTERN = 'faces/';
 const CLASSCHARTS_DEFAULT_PHOTO_URL = 'https://195ec04504ea0272771e-7c2c6dacbab7a2b2d574b53c70c1fe31.ssl.cf3.rackcdn.com/29.67.5-52f0ea22/img/faces/default.png';
 const CONFETTI_IMAGE_URL = 'https://img.icons8.com/color/1200/confetti.jpg';
+
+const SUPABASE_URL = 'https://izcixahquohigrzghyqv.supabase.co';
+const SUPABASE_REGION_LABEL = 'Stockholm, Sweden';
+
+function getAccentColor() {
+    return localStorage.getItem(ACCENT_COLOR_KEY) || DEFAULT_ACCENT_BLUE;
+}
+
+function setAccentColor(hex) {
+    localStorage.setItem(ACCENT_COLOR_KEY, hex);
+    applyAccentColor();
+    scheduleCloudSync();
+}
+
+function applyAccentColor() {
+    const accent = getAccentColor();
+    document.documentElement.style.setProperty('--cc-improver-accent', accent);
+    document.documentElement.style.setProperty('--cc-improver-accent-rgb', hexToRgbCss(accent));
+}
+
+function hexToRgbCss(hex) {
+    const clean = (hex || '').replace('#', '').trim();
+    if (!/^[0-9a-fA-F]{6}$/.test(clean)) return '3,155,229';
+    const r = parseInt(clean.slice(0, 2), 16);
+    const g = parseInt(clean.slice(2, 4), 16);
+    const b = parseInt(clean.slice(4, 6), 16);
+    return `${r},${g},${b}`;
+}
+
+function bgMessage(message) {
+    return new Promise((resolve) => {
+        if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) return resolve({ error: 'Background messaging unavailable' });
+        chrome.runtime.sendMessage(message, (resp) => resolve(resp));
+    });
+}
+
+async function getCloudSession() {
+    const resp = await bgMessage({ type: 'SUPABASE_GET_SESSION' });
+    return resp?.session || null;
+}
+
+async function ensureFreshSession() {
+    const session = await getCloudSession();
+    if (!session?.access_token) return null;
+    const now = Math.floor(Date.now() / 1000);
+    const expiresAt = session.expires_at || (session.expires_in ? now + session.expires_in : null);
+    if (expiresAt && expiresAt - now < 60) {
+        const refreshed = await bgMessage({ type: 'SUPABASE_REFRESH' });
+        if (refreshed?.session?.access_token) return refreshed.session;
+    }
+    return session;
+}
+
+function collectLocalSettings() {
+    return {
+        notes: loadNotes(),
+        goals: loadGoals(),
+        profile_photo: loadCustomProfilePhoto(),
+        accent_color: getAccentColor(),
+        plus_one_icon: getPlusOneIcon(),
+        homework_date_hint_enabled: getHomeworkDateHintStatus(),
+        homework_redesign_enabled: getHomeworkRedesignStatus(),
+        updated_at: new Date().toISOString(),
+    };
+}
+
+async function upsertSettingsToCloud() {
+    const session = await ensureFreshSession();
+    if (!session?.access_token || !session?.user?.id) return { ok: false, reason: 'not_connected' };
+
+    const body = { user_id: session.user.id, ...collectLocalSettings() };
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/user_settings?on_conflict=user_id`, {
+        method: 'POST',
+        headers: {
+            apikey: 'sb_publishable_a7GOW5zpj5YQp-nXJ6KyQA_NGkNyWFh',
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            Prefer: 'resolution=merge-duplicates,return=minimal',
+        },
+        body: JSON.stringify(body),
+    });
+
+    if (!resp.ok) {
+        const text = await resp.text().catch(() => '');
+        return { ok: false, reason: `http_${resp.status}`, details: text };
+    }
+    return { ok: true };
+}
+
+async function pullSettingsFromCloud() {
+    const session = await ensureFreshSession();
+    if (!session?.access_token || !session?.user?.id) return { ok: false, reason: 'not_connected' };
+
+    const url = `${SUPABASE_URL}/rest/v1/user_settings?select=*&user_id=eq.${encodeURIComponent(session.user.id)}&limit=1`;
+    const resp = await fetch(url, {
+        headers: {
+            apikey: 'sb_publishable_a7GOW5zpj5YQp-nXJ6KyQA_NGkNyWFh',
+            Authorization: `Bearer ${session.access_token}`,
+        },
+    });
+    if (!resp.ok) {
+        const text = await resp.text().catch(() => '');
+        return { ok: false, reason: `http_${resp.status}`, details: text };
+    }
+    const rows = await resp.json();
+    const row = rows?.[0];
+    if (!row) return { ok: true, empty: true };
+
+    if (typeof row.notes === 'string') saveNotes(row.notes);
+    if (Array.isArray(row.goals)) saveGoals(row.goals);
+    if (typeof row.profile_photo === 'string' || row.profile_photo === null) {
+        if (row.profile_photo) localStorage.setItem(PROFILE_PHOTO_STORAGE_KEY, row.profile_photo);
+        else localStorage.removeItem(PROFILE_PHOTO_STORAGE_KEY);
+    }
+    if (typeof row.accent_color === 'string') localStorage.setItem(ACCENT_COLOR_KEY, row.accent_color);
+    if (typeof row.plus_one_icon === 'string') localStorage.setItem(PLUS_ONE_ICON_KEY, row.plus_one_icon);
+    if (typeof row.homework_date_hint_enabled === 'boolean') localStorage.setItem(HOMEWORK_DATE_HINT_KEY, row.homework_date_hint_enabled ? 'true' : 'false');
+    if (typeof row.homework_redesign_enabled === 'boolean') localStorage.setItem(HOMEWORK_REDESIGN_KEY, row.homework_redesign_enabled ? 'true' : 'false');
+
+    applyAccentColor();
+    applyCustomProfilePhoto();
+    updateCustomIcons();
+    applyHomeworkRedesign();
+    injectHomeworkDateHint();
+
+    return { ok: true };
+}
+
+let cloudSyncTimer = null;
+function scheduleCloudSync() {
+    if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
+    cloudSyncTimer = setTimeout(() => {
+        upsertSettingsToCloud().catch(() => {});
+    }, 800);
+}
+
+let autoSyncInterval = null;
+function startAutoCloudSync() {
+    if (autoSyncInterval) return;
+    autoSyncInterval = setInterval(async () => {
+        const session = await getCloudSession();
+        if (!session?.access_token) return;
+        await upsertSettingsToCloud().catch(() => {});
+    }, 30_000);
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            getCloudSession().then((session) => {
+                if (session?.access_token) {
+                    pullSettingsFromCloud().catch(() => {});
+                    upsertSettingsToCloud().catch(() => {});
+                }
+            });
+        }
+    });
+}
 
 const DEFAULT_MENU_MAPPING = {
     0: 'home.svg',
@@ -48,6 +207,7 @@ function loadNotes() {
 
 function saveNotes(notes) {
     localStorage.setItem(NOTES_STORAGE_KEY, notes);
+    scheduleCloudSync();
 }
 
 function loadGoals() {
@@ -70,6 +230,7 @@ function saveGoals(goals) {
         localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(goals || []));
     } catch (e) {
     }
+    scheduleCloudSync();
 }
 
 function loadCustomProfilePhoto() {
@@ -86,6 +247,7 @@ function getPlusOneIcon() {
 
 function setPlusOneIcon(icon) {
     localStorage.setItem(PLUS_ONE_ICON_KEY, icon);
+    scheduleCloudSync();
 }
 
 function getHomeworkDateHintStatus() {
@@ -94,6 +256,7 @@ function getHomeworkDateHintStatus() {
 
 function setHomeworkDateHintStatus(enabled) {
     localStorage.setItem(HOMEWORK_DATE_HINT_KEY, enabled ? 'true' : 'false');
+    scheduleCloudSync();
 }
 
 function getHomeworkRedesignStatus() {
@@ -102,6 +265,7 @@ function getHomeworkRedesignStatus() {
 
 function setHomeworkRedesignStatus(enabled) {
     localStorage.setItem(HOMEWORK_REDESIGN_KEY, enabled ? 'true' : 'false');
+    scheduleCloudSync();
 }
 
 function updateAllMenuIcons() {
@@ -877,6 +1041,23 @@ function showAllSettingsModal() {
                 UI Tweaks
                 <span style="font-size: 1.5rem; line-height: 1;">&rarr;</span>
             </button>
+            <button id="cc-open-account-sync-modal" class="cc-settings-hub-button" style="
+                background-color: #E0F2F1;
+                color: #00695C;
+                border: 1px solid #00695C;
+                padding: 15px;
+                border-radius: 8px;
+                font-weight: 600;
+                text-align: left;
+                cursor: pointer;
+                transition: background-color 0.2s, box-shadow 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            ">
+                Account & Sync
+                <span style="font-size: 1.5rem; line-height: 1;">&rarr;</span>
+            </button>
         </div>
         <div style="display: flex; justify-content: flex-end; margin-top: 30px;">
             <button id="cc-settings-hub-close-btn" class="cc-notes-button cc-notes-cancel-btn">Close</button>
@@ -904,6 +1085,11 @@ function showAllSettingsModal() {
     document.getElementById('cc-open-ui-tweaks-modal').addEventListener('click', () => {
         closeModal();
         showUITweaksModal();
+    });
+
+    document.getElementById('cc-open-account-sync-modal').addEventListener('click', () => {
+        closeModal();
+        showAccountSyncModal();
     });
 }
 
@@ -944,6 +1130,136 @@ function showUITweaksModal() {
         const enabled = e.target.checked;
         setHomeworkRedesignStatus(enabled);
         applyHomeworkRedesign();
+    });
+}
+
+function showAccountSyncModal() {
+    const bodyHtml = `
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="padding: 14px; border-radius: 14px; border: 1px solid #e5e7eb; background: linear-gradient(135deg, #f8fafc, #ffffff);">
+                <div style="font-weight: 800; color: #111827; margin-bottom: 6px; font-size: 1rem;">Cloud Sync</div>
+                <div style="font-size: 0.88rem; color: #4b5563; line-height: 1.4;">
+                    Your settings are stored locally on this device by default. When connected, they sync automatically to Supabase (server region: ${SUPABASE_REGION_LABEL}).
+                </div>
+            </div>
+
+            <div id="cc-sync-status" style="padding: 12px; border-radius: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-size: 0.85rem; color: #374151;">
+                Checking connection…
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                <button id="cc-sync-connect-github" class="cc-notes-button cc-notes-save-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <img src="${getAssetUrl('github.svg')}" alt="" style="width: 18px; height: 18px;">
+                    Connect with GitHub
+                </button>
+            </div>
+
+            <div style="padding: 14px; border: 1px solid #e5e7eb; border-radius: 14px; background: white;">
+                <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px;">
+                    <div style="font-weight: 800; color: #111827;">Email sign-in</div>
+                    <div style="font-size: 0.75rem; color: #6b7280;">Email + password</div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <input id="cc-sync-email" type="email" placeholder="Email" class="cc-add-goal-input" style="width: 100%;">
+                    <input id="cc-sync-password" type="password" placeholder="Password" class="cc-add-goal-input" style="width: 100%;">
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+                        <button id="cc-sync-email-signin" class="cc-notes-button cc-notes-save-btn">Sign in</button>
+                        <button id="cc-sync-email-signup" class="cc-notes-button cc-goals-cancel-btn">Sign up</button>
+                    </div>
+                    <div style="font-size: 0.75rem; color: #6b7280;">
+                        If email confirmation is enabled in Supabase, confirm your email before sync becomes active.
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+                <button id="cc-sync-pull" class="cc-notes-button cc-goals-cancel-btn">Pull</button>
+                <button id="cc-sync-push" class="cc-notes-button cc-notes-save-btn">Sync now</button>
+                <button id="cc-sync-disconnect" class="cc-notes-button cc-goals-cancel-btn" style="background: #fee2e2; border: 1px solid #ef4444; color: #991b1b;">Disconnect</button>
+            </div>
+        </div>
+    `;
+
+    const { closeModal } = createBaseModal('cc-account-sync', 'Account & Sync', bodyHtml, '520px');
+
+    const statusEl = document.getElementById('cc-sync-status');
+    const setStatus = (text, kind = 'info') => {
+        const colors = {
+            info: { bg: '#f9fafb', border: '#e5e7eb', color: '#374151' },
+            ok: { bg: '#ecfdf5', border: '#10b981', color: '#065f46' },
+            warn: { bg: '#fffbeb', border: '#f59e0b', color: '#92400e' },
+            err: { bg: '#fef2f2', border: '#ef4444', color: '#991b1b' },
+        };
+        const c = colors[kind] || colors.info;
+        statusEl.textContent = text;
+        statusEl.style.background = c.bg;
+        statusEl.style.borderColor = c.border;
+        statusEl.style.color = c.color;
+    };
+
+    const refreshStatus = async () => {
+        const session = await getCloudSession();
+        if (session?.user?.email) setStatus(`Connected as ${session.user.email}. Cloud sync is enabled.`, 'ok');
+        else setStatus('Not connected. Your settings are stored locally on this device.', 'warn');
+    };
+
+    refreshStatus();
+
+    document.getElementById('cc-sync-connect-github').addEventListener('click', async () => {
+        setStatus('Opening GitHub sign-in…', 'info');
+        const resp = await bgMessage({ type: 'SUPABASE_SIGN_IN_GITHUB' });
+        if (resp?.error) return setStatus(resp.error, 'err');
+        await pullSettingsFromCloud().catch(() => {});
+        await upsertSettingsToCloud().catch(() => {});
+        startAutoCloudSync();
+        await refreshStatus();
+        closeModal();
+    });
+
+    document.getElementById('cc-sync-email-signin').addEventListener('click', async () => {
+        const email = document.getElementById('cc-sync-email').value.trim();
+        const password = document.getElementById('cc-sync-password').value;
+        if (!email || !password) return setStatus('Enter an email and password.', 'warn');
+        setStatus('Signing in…', 'info');
+        const resp = await bgMessage({ type: 'SUPABASE_SIGN_IN_PASSWORD', email, password });
+        if (resp?.error) return setStatus(resp.error, 'err');
+        await pullSettingsFromCloud().catch(() => {});
+        await upsertSettingsToCloud().catch(() => {});
+        startAutoCloudSync();
+        await refreshStatus();
+        closeModal();
+    });
+
+    document.getElementById('cc-sync-email-signup').addEventListener('click', async () => {
+        const email = document.getElementById('cc-sync-email').value.trim();
+        const password = document.getElementById('cc-sync-password').value;
+        if (!email || !password) return setStatus('Enter an email and password.', 'warn');
+        setStatus('Creating account…', 'info');
+        const resp = await bgMessage({ type: 'SUPABASE_SIGN_UP_PASSWORD', email, password });
+        if (resp?.error) return setStatus(resp.error, 'err');
+        setStatus('Account created. If email confirmation is enabled, confirm your email then sign in.', 'ok');
+        await refreshStatus();
+    });
+
+    document.getElementById('cc-sync-push').addEventListener('click', async () => {
+        setStatus('Syncing to cloud…', 'info');
+        const r = await upsertSettingsToCloud();
+        if (!r.ok) return setStatus(`Sync failed (${r.reason || 'unknown'}).`, 'err');
+        setStatus('Synced to cloud.', 'ok');
+    });
+
+    document.getElementById('cc-sync-pull').addEventListener('click', async () => {
+        setStatus('Pulling from cloud…', 'info');
+        const r = await pullSettingsFromCloud();
+        if (!r.ok) return setStatus(`Pull failed (${r.reason || 'unknown'}).`, 'err');
+        setStatus('Pulled from cloud.', 'ok');
+    });
+
+    document.getElementById('cc-sync-disconnect').addEventListener('click', async () => {
+        setStatus('Disconnecting…', 'info');
+        const resp = await bgMessage({ type: 'SUPABASE_SIGN_OUT' });
+        if (resp?.error) return setStatus(resp.error, 'err');
+        setStatus('Disconnected. Your settings will remain stored locally on this device.', 'warn');
     });
 }
 
@@ -1130,7 +1446,7 @@ function clearCompleted() {
 
 function showAboutModal() {
     const bodyHtml = `
-        <p style="margin-bottom: 20px; font-size: 1rem; color: #444;">This project enhances the ClassCharts student portal by adding new, helpful features that are stored securely in your browser's local memory.</p>
+        <p style="margin-bottom: 20px; font-size: 1rem; color: #444;">This project enhances the ClassCharts student portal by adding helpful features. Your data is stored locally on this device by default, and can optionally sync via Supabase once you connect an account in Settings.</p>
         <ul style="list-style-type: disc; padding-left: 20px; margin-bottom: 20px; color: #444;">
             <li style="margin-bottom: 8px;"><strong>Version:</strong> 4.1 (Current Version Key: ${CURRENT_VERSION_KEY})</li>
             <li style="margin-bottom: 8px;"><strong>Feature 1:</strong> Personal Notes (A private notepad)</li>
@@ -1139,7 +1455,7 @@ function showAboutModal() {
         </ul>
         <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px;">
             <p style="font-size: 0.85rem; color: #777; margin-bottom: 10px;">
-                <strong>Privacy Notice:</strong> This extension stores all your notes, goals, and data locally in your browser (using localStorage) and does not collect, transmit, or share any personal data with external servers.
+                <strong>Privacy Notice:</strong> By default, this extension stores your notes, goals, and customization settings locally on this device. If you choose to connect an account in <strong>Settings → Account &amp; Sync</strong>, your settings are stored in the cloud (Supabase) on a server in ${SUPABASE_REGION_LABEL} to enable cross-device sync.
             </p>
             <p style="font-size: 0.8rem; color: #999;">
                 &copy; James Theakston 2026
@@ -1160,7 +1476,7 @@ function showProfilePhotoModal() {
     const bodyHtml = `
         <div style="font-size: 1rem; color: #333; margin-bottom: 25px; background-color: #f7f7f7; padding: 15px; border-radius: 8px;">
             <p style="font-weight: 600; color: ${PRIMARY_BLUE}; margin-bottom: 10px;">Your Privacy, Our Priority</p>
-            <p>This custom profile photo is <strong>only visible to you</strong> and is stored entirely within your browser's local memory. It will not be shared with your school, teachers, or other students. You can change or remove it anytime.</p>
+            <p>This custom profile photo is <strong>only visible to you</strong>. It’s stored locally on this device until you connect an account in Settings, at which point it’s stored in the cloud (Supabase) on a server in ${SUPABASE_REGION_LABEL} for cross-device sync. It will not be shared with your school, teachers, or other students. You can change or remove it anytime.</p>
         </div>
         <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
             <img id="cc-current-photo-preview" src="${currentPhoto}"
@@ -1193,6 +1509,7 @@ function showProfilePhotoModal() {
         localStorage.removeItem(PROFILE_PHOTO_STORAGE_KEY);
         applyCustomProfilePhoto();
         previewImg.src = CLASSCHARTS_DEFAULT_PHOTO_URL;
+        scheduleCloudSync();
     });
 
     uploadInput.addEventListener('change', (event) => {
@@ -1205,6 +1522,7 @@ function showProfilePhotoModal() {
             localStorage.setItem(PROFILE_PHOTO_STORAGE_KEY, base64Image);
             applyCustomProfilePhoto();
             previewImg.src = base64Image;
+            scheduleCloudSync();
         };
         reader.readAsDataURL(file);
     });
@@ -1213,6 +1531,7 @@ function showProfilePhotoModal() {
 function showAppearanceSettingsModal() {
     const currentIcon = getPlusOneIcon();
     const isHomeworkHintEnabled = getHomeworkDateHintStatus();
+    const currentAccent = getAccentColor();
 
     const bodyHtml = `
         <div class="space-y-4">
@@ -1236,6 +1555,20 @@ function showAppearanceSettingsModal() {
                     <img src="${getAssetUrl('award.svg')}" alt="Award Icon" style="width: 20px; height: 20px; margin-right: 10px;">
                     <span style="font-weight: 500;">Award Icon</span>
                 </label>
+            </div>
+
+            <h3 style="font-size: 1.1rem; font-weight: 600; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px;">Accent Colour</h3>
+            <p style="font-size: 0.9rem; color: #555; margin-bottom: 12px;">Pick a preset, or choose any custom colour.</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+                <button class="cc-accent-preset" data-color="#039BE5" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #039BE5; cursor: pointer;"></button>
+                <button class="cc-accent-preset" data-color="#7C3AED" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #7C3AED; cursor: pointer;"></button>
+                <button class="cc-accent-preset" data-color="#10B981" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #10B981; cursor: pointer;"></button>
+                <button class="cc-accent-preset" data-color="#F59E0B" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #F59E0B; cursor: pointer;"></button>
+                <button class="cc-accent-preset" data-color="#EF4444" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #EF4444; cursor: pointer;"></button>
+                <div style="margin-left: 6px; display: flex; align-items: center; gap: 10px;">
+                    <input id="cc-accent-picker" type="color" value="${currentAccent}" style="width: 44px; height: 32px; border: none; background: transparent; cursor: pointer;">
+                    <input id="cc-accent-hex" type="text" value="${currentAccent}" class="cc-add-goal-input" style="width: 130px;" spellcheck="false">
+                </div>
             </div>
 
             <h3 style="font-size: 1.1rem; font-weight: 600; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px;">New Feature Toggles</h3>
@@ -1277,6 +1610,21 @@ function showAppearanceSettingsModal() {
         setHomeworkDateHintStatus(enabled);
         injectHomeworkDateHint();
     });
+
+    const applyAccent = (hex) => {
+        const cleaned = (hex || '').trim();
+        if (!/^#[0-9a-fA-F]{6}$/.test(cleaned)) return;
+        document.getElementById('cc-accent-picker').value = cleaned;
+        document.getElementById('cc-accent-hex').value = cleaned;
+        setAccentColor(cleaned);
+    };
+
+    document.querySelectorAll('.cc-accent-preset').forEach(btn => {
+        btn.addEventListener('click', () => applyAccent(btn.dataset.color));
+    });
+
+    document.getElementById('cc-accent-picker').addEventListener('input', (e) => applyAccent(e.target.value));
+    document.getElementById('cc-accent-hex').addEventListener('change', (e) => applyAccent(e.target.value));
 }
 
 function showDeveloperInfoModal() {
@@ -1501,6 +1849,10 @@ function showWelcomeModal(callback) {
     const backdrop = document.getElementById('cc-welcome-modal-backdrop');
     const content = document.getElementById('cc-welcome-modal-content');
 
+    if (!dismissBtn || !backdrop || !content) {
+        try { backdrop?.remove(); } catch (e) {}
+        return;
+    }
 
     setTimeout(() => {
         content.classList.add('visible');
@@ -1568,6 +1920,10 @@ function showReviewModal() {
     const backdrop = document.getElementById('cc-review-modal-backdrop');
     const content = document.getElementById('cc-review-modal-content');
 
+    if (!backdrop || !content) {
+        try { backdrop?.remove(); } catch (e) {}
+        return;
+    }
 
     setTimeout(() => {
         content.classList.add('visible');
@@ -1582,8 +1938,10 @@ function showReviewModal() {
         }, 300);
     };
 
-    document.getElementById('cc-review-later-btn').addEventListener('click', dismiss);
-    document.getElementById('cc-review-dismiss-btn').addEventListener('click', dismiss);
+    const laterBtn = document.getElementById('cc-review-later-btn');
+    const dismissBtn = document.getElementById('cc-review-dismiss-btn');
+    if (laterBtn) laterBtn.addEventListener('click', dismiss);
+    if (dismissBtn) dismissBtn.addEventListener('click', dismiss);
 
     backdrop.addEventListener('click', (event) => {
         if (event.target === backdrop) {
@@ -1862,6 +2220,14 @@ function injectRefreshTweaksButton() {
 function initObserver() {
     let attempts = 0;
     const maxAttempts = 30;
+
+    applyAccentColor();
+    getCloudSession().then((session) => {
+        if (session?.access_token) {
+            pullSettingsFromCloud().catch(() => {});
+            startAutoCloudSync();
+        }
+    });
 
     replaceClassChartsLogo();
     applyImprovedUI(getImprovedUIStatus());
