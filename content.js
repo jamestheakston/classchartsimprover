@@ -1139,7 +1139,9 @@ function showAccountSyncModal() {
             <div style="padding: 14px; border-radius: 14px; border: 1px solid #e5e7eb; background: linear-gradient(135deg, #f8fafc, #ffffff);">
                 <div style="font-weight: 800; color: #111827; margin-bottom: 6px; font-size: 1rem;">Cloud Sync</div>
                 <div style="font-size: 0.88rem; color: #4b5563; line-height: 1.4;">
-                    Your settings are stored locally on this device by default. When connected, they sync automatically to Supabase (server region: ${SUPABASE_REGION_LABEL}).
+                    Your settings are stored locally on this device by default. When connected, they sync automatically to Supabase (server region: ${SUPABASE_REGION_LABEL}). Please ensure you have read and you agree to <a href="https://classchartsimprover.pages.dev/privacy" class="text-blue-600 hover:text-blue-800 underline decoration-blue-600 hover:decoration-blue-800 transition-colors duration-200">
+        our privacy policy
+    </a> before you link your account.
                 </div>
             </div>
 
@@ -1167,7 +1169,7 @@ function showAccountSyncModal() {
                         <button id="cc-sync-email-signup" class="cc-notes-button cc-goals-cancel-btn">Sign up</button>
                     </div>
                     <div style="font-size: 0.75rem; color: #6b7280;">
-                        If email confirmation is enabled in Supabase, confirm your email before sync becomes active.
+                        After you create your account, you must confirm your email before you can use cross-device sync.
                     </div>
                 </div>
             </div>
