@@ -21,7 +21,7 @@ ClassCharts Improver only supports the latest version. The extension is automati
 
 Green features include UI changes, Amber may include the custom profile picture feature, and red will include the bulk complete feature (Coming soon)
 ## Security across the extension
-Security is our priority, so no data is collected or transmitted to our services. All data processing takes place client-side. Your profile picture, goals and notes are stored **on your computer only**.
+Data is stored locally until you choose to sync to the cloud. More information can be found [here](https://classchartsimprover.pages.dev/privacy).
 
 ## Reporting a Vulnerability
 Report a vulnerability by [drafting an advisory](https://github.com/jamestheakston1/classchartsimprover/security/advisories/new) or emailing jamestheakston7@outlook.com (please note that GitHub Advisories are the fastest way to get a response).
