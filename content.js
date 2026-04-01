@@ -4,6 +4,8 @@ const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
 const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_4';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
+const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
+const REVIEW_INTERVAL_DAYS_KEY = 'classcharts_improver_review_interval_days';
 const IMPROVED_UI_KEY = 'classcharts_improver_improved_ui_enabled';
 const PLUS_ONE_ICON_KEY = 'classcharts_improver_plus_one_icon';
 const HOMEWORK_DATE_HINT_KEY = 'classcharts_improver_homework_date_hint_enabled';
@@ -87,6 +89,7 @@ function collectLocalSettings() {
         plus_one_icon: getPlusOneIcon(),
         homework_date_hint_enabled: getHomeworkDateHintStatus(),
         homework_redesign_enabled: getHomeworkRedesignStatus(),
+        review_interval_days: getReviewIntervalDays(),
         updated_at: new Date().toISOString(),
     };
 }
@@ -143,6 +146,7 @@ async function pullSettingsFromCloud() {
     if (typeof row.plus_one_icon === 'string') localStorage.setItem(PLUS_ONE_ICON_KEY, row.plus_one_icon);
     if (typeof row.homework_date_hint_enabled === 'boolean') localStorage.setItem(HOMEWORK_DATE_HINT_KEY, row.homework_date_hint_enabled ? 'true' : 'false');
     if (typeof row.homework_redesign_enabled === 'boolean') localStorage.setItem(HOMEWORK_REDESIGN_KEY, row.homework_redesign_enabled ? 'true' : 'false');
+    if (typeof row.review_interval_days === 'number') localStorage.setItem(REVIEW_INTERVAL_DAYS_KEY, String(Math.min(Math.max(Math.floor(row.review_interval_days), 1), 365)));
 
     applyAccentColor();
     applyCustomProfilePhoto();
@@ -182,24 +186,48 @@ function startAutoCloudSync() {
     });
 }
 
-const DEFAULT_MENU_MAPPING = {
-    0: 'home.svg',
-    1: 'share-2.svg',
-    2: 'clipboard.svg',
-    3: 'clock.svg',
-    4: 'smile.svg',
-    5: 'calendar.svg',
-    6: 'bar-chart-2.svg',
-    7: 'alert-triangle.svg',
-    8: 'message-square.svg'
-};
-const DEFAULT_MENU_TEXT_MAPPING = {
-    0: 'Overview',
-    2: 'Homework',
-    4: 'Wellbeing',
-    5: 'Timetable',
-    8: 'Messages'
-};
+const MENU_ICON_RULES = [
+    { match: ['overview'], icon: 'home.svg' },
+    { match: ['announcements', 'announcement'], icon: 'share-2.svg' },
+    { match: ['homework'], icon: 'clipboard.svg' },
+    { match: ['detentions', 'detention'], icon: 'clock.svg' },
+    { match: ['wellbeing', 'well-being'], icon: 'smile.svg' },
+    { match: ['timetable', 'time table'], icon: 'calendar.svg' },
+    { match: ['badges', 'rewards', 'reward', 'my rewards', 'my reward'], icon: 'bar-chart-2.svg' },
+    { match: ['behaviour', 'behavior'], icon: 'alert-triangle.svg' },
+    { match: ['messages', 'message'], icon: 'message-square.svg' },
+    { match: ['shop', 'store'], icon: 'shopping-bag.svg' },
+    { match: ['clubs'], icon: 'users.svg' },
+    { match: ['attendance'], icon: 'check-square.svg' }
+];
+
+function normalizeMenuLabel(text) {
+    return (text || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function resolveMenuIconFromLabel(label) {
+    const normalized = normalizeMenuLabel(label);
+    for (const rule of MENU_ICON_RULES) {
+        if (rule.match.some(fragment => normalized.includes(fragment))) return rule.icon;
+    }
+    return null;
+}
+
+function getReviewIntervalDays() {
+    const raw = Number(localStorage.getItem(REVIEW_INTERVAL_DAYS_KEY));
+    if (!Number.isFinite(raw) || raw < 1) return 30;
+    return Math.min(raw, 365);
+}
+
+function setReviewIntervalDays(days) {
+    const clamped = Math.min(Math.max(Number(days) || 30, 1), 365);
+    localStorage.setItem(REVIEW_INTERVAL_DAYS_KEY, String(clamped));
+    scheduleCloudSync();
+}
 
 function loadNotes() {
     return localStorage.getItem(NOTES_STORAGE_KEY) || '';
@@ -302,6 +330,29 @@ function replaceClassChartsLogo() {
 
 function applyImprovedUI(enabled) {
     const body = document.body;
+    const updateDrawerSafetyStyles = () => {
+        const styleId = 'cc-improver-drawer-safety-styles';
+        const existing = document.getElementById(styleId);
+        if (!enabled) {
+            if (existing) existing.remove();
+            return;
+        }
+        if (existing) return;
+        const s = document.createElement('style');
+        s.id = styleId;
+        s.textContent = `
+            .desktop-drawer-pupil-menu-item,
+            .desktop-drawer-pupil-menu-item * {
+                visibility: visible !important;
+            }
+            .desktop-drawer-pupil-menu-item .MuiListItemText-root,
+            .desktop-drawer-pupil-menu-item .MuiListItemIcon-root {
+                opacity: 1 !important;
+            }
+        `;
+        document.head.appendChild(s);
+    };
+
     if (enabled) {
         body.classList.add('cc-improver-improved-ui');
         const style = document.createElement('style');
@@ -345,10 +396,12 @@ function applyImprovedUI(enabled) {
             }
         `;
         document.head.appendChild(style);
+        updateDrawerSafetyStyles();
     } else {
         body.classList.remove('cc-improver-improved-ui');
         const style = document.getElementById('cc-improver-ui-styles');
         if (style) style.remove();
+        updateDrawerSafetyStyles();
     }
 }
 
@@ -520,6 +573,11 @@ function applyHomeworkRedesign() {
                 border-radius: 8px !important;
                 margin-top: 8px !important;
                 transition: all 0.2s !important;
+                color: #1d4ed8 !important;
+                text-decoration: underline !important;
+                pointer-events: auto !important;
+                position: relative !important;
+                z-index: 1 !important;
             }
             
             .homework-details ul a:hover {
@@ -574,6 +632,7 @@ function applyHomeworkRedesign() {
 }
 
 function replaceIcon(element, iconFile) {
+    if (!iconFile) return;
     const iconContainer = element.querySelector('.MuiListItemIcon-root');
     if (!iconContainer) return;
     const injectedIconSelector = '.cc-improver-icon-img';
@@ -594,6 +653,13 @@ function replaceIcon(element, iconFile) {
             img.alt = 'icon';
             img.className = 'cc-improver-icon-img';
             img.style.cssText = 'width:24px;height:24px; color: currentColor;';
+            img.addEventListener('error', () => {
+                img.remove();
+                if (originalIcon && originalIcon.hasAttribute('data-cc-improver-original-display')) {
+                    originalIcon.style.display = originalIcon.getAttribute('data-cc-improver-original-display');
+                    originalIcon.removeAttribute('data-cc-improver-original-display');
+                }
+            });
             iconContainer.appendChild(img);
         } else {
             injectedIcon.src = getAssetUrl(iconFile);
@@ -612,18 +678,11 @@ function replaceIcon(element, iconFile) {
 
 function updateDefaultIcons() {
     const defaultMenuItems = document.querySelectorAll('.MuiButtonBase-root.MuiListItem-root.desktop-drawer-pupil-menu-item');
-    defaultMenuItems.forEach((item, index) => {
-        const iconFile = DEFAULT_MENU_MAPPING[index];
-        const newText = DEFAULT_MENU_TEXT_MAPPING[index];
-        if (iconFile) {
-            replaceIcon(item, iconFile);
-        }
-        if (newText) {
-            const textSpan = item.querySelector('.MuiListItemText-primary');
-            if (textSpan) {
-                textSpan.textContent = newText;
-            }
-        }
+    defaultMenuItems.forEach((item) => {
+        const textSpan = item.querySelector('.MuiListItemText-primary');
+        if (!textSpan) return;
+        const iconFile = resolveMenuIconFromLabel(textSpan.textContent);
+        if (iconFile) replaceIcon(item, iconFile);
     });
 }
 
@@ -672,12 +731,6 @@ function createMenuItem() {
         showAllSettingsModal();
     }, 'cc-improver-settings-hub-menu-item');
 
-    const aboutItem = createItem('About', INFO_ICON_FILE, (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        showAboutModal();
-    }, 'cc-improver-about-menu-item');
-
     const improverHeaderHtml = `
         <div class="cc-improver-header" style="padding: 16px; padding-bottom: 8px; font-weight: 700; color: rgba(0, 0, 0, 0.54); font-size: 0.875rem; text-transform: uppercase;">
             ClassCharts Improver
@@ -717,8 +770,7 @@ function createMenuItem() {
     `;
     settingsHubItem.appendChild(badge);
 
-    settingsHubItem.after(aboutItem);
-    aboutItem.insertAdjacentHTML('afterend', finalDividerHtml);
+    settingsHubItem.insertAdjacentHTML('afterend', finalDividerHtml);
 
     return true;
 }
@@ -756,6 +808,42 @@ function createBaseModal(idPrefix, title, bodyHtml, maxWidth = '500px') {
             }
             .${idPrefix}-modal-body {
                 padding: 24px;
+            }
+            .cc-settings-stack {
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+            }
+            .cc-settings-card {
+                padding: 14px;
+                border: 1px solid #e5e7eb;
+                border-radius: 14px;
+                background: #fff;
+            }
+            .cc-settings-card-soft {
+                padding: 14px;
+                border: 1px solid #e5e7eb;
+                border-radius: 14px;
+                background: linear-gradient(135deg, #f8fafc, #ffffff);
+            }
+            .cc-settings-title {
+                font-size: 0.95rem;
+                font-weight: 700;
+                color: #111827;
+                margin: 0 0 6px 0;
+            }
+            .cc-settings-subtitle {
+                font-size: 0.82rem;
+                color: #6b7280;
+                margin: 0;
+                line-height: 1.4;
+            }
+            .cc-settings-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                margin-top: 20px;
+                flex-wrap: wrap;
             }
             .${idPrefix}-close-x {
                  background: none;
@@ -986,10 +1074,12 @@ function createBaseModal(idPrefix, title, bodyHtml, maxWidth = '500px') {
 
 function showAllSettingsModal() {
     const bodyHtml = `
-        <p style="font-size: 1rem; color: #444; margin-bottom: 25px;">
-            Manage all ClassCharts Improver settings and customizations in one place.
-        </p>
-        <div style="display: flex; flex-direction: column; gap: 15px;">
+        <div class="cc-settings-card-soft" style="margin-bottom: 18px;">
+            <p style="font-size: 0.95rem; color: #374151; margin: 0;">
+                Manage all ClassCharts Improver settings and customizations in one place.
+            </p>
+        </div>
+        <div class="cc-settings-stack">
             <button id="cc-open-photo-modal" class="cc-settings-hub-button" style="
                 background-color: #E3F2FD;
                 color: ${PRIMARY_BLUE};
@@ -1058,8 +1148,25 @@ function showAllSettingsModal() {
                 Account & Sync
                 <span style="font-size: 1.5rem; line-height: 1;">&rarr;</span>
             </button>
+            <button id="cc-open-about-modal" class="cc-settings-hub-button" style="
+                background-color: #F3E8FF;
+                color: #7E22CE;
+                border: 1px solid #7E22CE;
+                padding: 15px;
+                border-radius: 8px;
+                font-weight: 600;
+                text-align: left;
+                cursor: pointer;
+                transition: background-color 0.2s, box-shadow 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            ">
+                About
+                <span style="font-size: 1.5rem; line-height: 1;">&rarr;</span>
+            </button>
         </div>
-        <div style="display: flex; justify-content: flex-end; margin-top: 30px;">
+        <div class="cc-settings-actions">
             <button id="cc-settings-hub-close-btn" class="cc-notes-button cc-notes-cancel-btn">Close</button>
         </div>
         <style>
@@ -1091,16 +1198,24 @@ function showAllSettingsModal() {
         closeModal();
         showAccountSyncModal();
     });
+
+    document.getElementById('cc-open-about-modal').addEventListener('click', () => {
+        closeModal();
+        showAboutModal();
+    });
 }
 
 function showUITweaksModal() {
     const isRedesignEnabled = getHomeworkRedesignStatus();
+    const reviewIntervalDays = getReviewIntervalDays();
 
     const bodyHtml = `
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-            <p style="font-size: 0.9rem; color: #666;">Fine-tune the look and feel of the student portal.</p>
-            
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; transition: border-color 0.2s;">
+        <div class="cc-settings-stack">
+            <div class="cc-settings-card-soft">
+                <p class="cc-settings-subtitle">Fine-tune the look and feel of the student portal.</p>
+            </div>
+
+            <div class="cc-settings-card" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                     <span style="font-weight: 600; color: #111827;">Homework Tab Redesign</span>
                     <span style="font-size: 0.75rem; color: #6b7280;">Enable a cleaner, more modern layout for homework cards.</span>
@@ -1111,13 +1226,21 @@ function showUITweaksModal() {
                 </label>
             </div>
             
-            <div style="padding: 10px 0;">
+            <div class="cc-settings-card">
                 <div class="cc-improver-new-func-label" style="font-size: 0.75rem; color: #9ca3af; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #f3f4f6; padding-bottom: 8px; margin-bottom: 12px;">New Functionality</div>
                 <p style="font-size: 0.85rem; color: #4b5563;">Additional customization options are added here as they are developed.</p>
             </div>
+
+            <div class="cc-settings-card" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-weight: 600; color: #111827;">"Enjoying the Improver?" Prompt</span>
+                    <span style="font-size: 0.75rem; color: #6b7280;">Show the review prompt every N days.</span>
+                </div>
+                <input id="cc-review-interval-days" type="number" min="1" max="365" value="${reviewIntervalDays}" class="cc-add-goal-input" style="width: 90px;">
+            </div>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; margin-top: 32px;">
+        <div class="cc-settings-actions" style="margin-top: 24px;">
             <button id="cc-ui-tweaks-close-btn" class="cc-notes-button cc-notes-save-btn">Done</button>
         </div>
     `;
@@ -1131,12 +1254,16 @@ function showUITweaksModal() {
         setHomeworkRedesignStatus(enabled);
         applyHomeworkRedesign();
     });
+
+    document.getElementById('cc-review-interval-days').addEventListener('change', (e) => {
+        setReviewIntervalDays(e.target.value);
+    });
 }
 
 function showAccountSyncModal() {
     const bodyHtml = `
-        <div style="display: flex; flex-direction: column; gap: 16px;">
-            <div style="padding: 14px; border-radius: 14px; border: 1px solid #e5e7eb; background: linear-gradient(135deg, #f8fafc, #ffffff);">
+        <div class="cc-settings-stack">
+            <div class="cc-settings-card-soft">
                 <div style="font-weight: 800; color: #111827; margin-bottom: 6px; font-size: 1rem;">Cloud Sync</div>
                 <div style="font-size: 0.88rem; color: #4b5563; line-height: 1.4;">
                     Your settings are stored locally on this device by default. When connected, they sync automatically to Supabase (server region: ${SUPABASE_REGION_LABEL}). Please ensure you have read and you agree to <a href="https://classchartsimprover.pages.dev/privacy" class="text-blue-600 hover:text-blue-800 underline decoration-blue-600 hover:decoration-blue-800 transition-colors duration-200">
@@ -1156,7 +1283,7 @@ function showAccountSyncModal() {
                 </button>
             </div>
 
-            <div style="padding: 14px; border: 1px solid #e5e7eb; border-radius: 14px; background: white;">
+            <div class="cc-settings-card">
                 <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px;">
                     <div style="font-weight: 800; color: #111827;">Email sign-in</div>
                     <div style="font-size: 0.75rem; color: #6b7280;">Email + password</div>
@@ -1174,7 +1301,7 @@ function showAccountSyncModal() {
                 </div>
             </div>
 
-            <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+            <div class="cc-settings-actions" style="margin-top: 4px;">
                 <button id="cc-sync-pull" class="cc-notes-button cc-goals-cancel-btn">Pull</button>
                 <button id="cc-sync-push" class="cc-notes-button cc-notes-save-btn">Sync now</button>
                 <button id="cc-sync-disconnect" class="cc-notes-button cc-goals-cancel-btn" style="background: #fee2e2; border: 1px solid #ef4444; color: #991b1b;">Disconnect</button>
@@ -1448,22 +1575,28 @@ function clearCompleted() {
 
 function showAboutModal() {
     const bodyHtml = `
-        <p style="margin-bottom: 20px; font-size: 1rem; color: #444;">This project enhances the ClassCharts student portal by adding helpful features. Your data is stored locally on this device by default, and can optionally sync via Supabase once you connect an account in Settings.</p>
-        <ul style="list-style-type: disc; padding-left: 20px; margin-bottom: 20px; color: #444;">
-            <li style="margin-bottom: 8px;"><strong>Version:</strong> 4.1 (Current Version Key: ${CURRENT_VERSION_KEY})</li>
-            <li style="margin-bottom: 8px;"><strong>Feature 1:</strong> Personal Notes (A private notepad)</li>
-            <li><strong>Feature 2:</strong> Goals Tracker (Define and track tasks/goals)</li>
-            <li><strong>Feature 3:</strong> Custom Profile Photo (Visible only to you)</li>
-        </ul>
-        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px;">
-            <p style="font-size: 0.85rem; color: #777; margin-bottom: 10px;">
-                <strong>Privacy Notice:</strong> By default, this extension stores your notes, goals, and customization settings locally on this device. If you choose to connect an account in <strong>Settings → Account &amp; Sync</strong>, your settings are stored in the cloud (Supabase) on a server in ${SUPABASE_REGION_LABEL} to enable cross-device sync.
-            </p>
-            <p style="font-size: 0.8rem; color: #999;">
-                &copy; James Theakston 2026
-            </p>
+        <div class="cc-settings-stack">
+            <div class="cc-settings-card-soft">
+                <p class="cc-settings-subtitle">This project enhances the ClassCharts student portal by adding helpful features. Your data is stored locally on this device by default, and can optionally sync via Supabase once you connect an account in Settings.</p>
+            </div>
+            <div class="cc-settings-card">
+                <h4 class="cc-settings-title">Project Info</h4>
+                <ul style="list-style-type: disc; padding-left: 20px; margin: 0; color: #444;">
+                    <li style="margin-bottom: 8px;"><strong>Version:</strong> 4.1 (Current Version Key: ${CURRENT_VERSION_KEY})</li>
+                    <li style="margin-bottom: 8px;"><strong>Feature 1:</strong> Personal Notes (A private notepad)</li>
+                    <li><strong>Feature 2:</strong> Goals Tracker (Define and track tasks/goals)</li>
+                    <li><strong>Feature 3:</strong> Custom Profile Photo (Visible only to you)</li>
+                </ul>
+            </div>
+            <div class="cc-settings-card">
+                <h4 class="cc-settings-title">Privacy Notice</h4>
+                <p class="cc-settings-subtitle" style="color: #4b5563;">
+                    By default, this extension stores your notes, goals, and customization settings locally on this device. If you choose to connect an account in <strong>Settings → Account &amp; Sync</strong>, your settings are stored in the cloud (Supabase) on a server in ${SUPABASE_REGION_LABEL} to enable cross-device sync.
+                </p>
+            </div>
+            <p style="font-size: 0.8rem; color: #9ca3af; margin: 0;">&copy; James Theakston 2026</p>
         </div>
-        <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+        <div class="cc-settings-actions">
             <button id="cc-about-close-btn" class="cc-notes-button cc-notes-save-btn">Close</button>
         </div>
     `;
@@ -1476,24 +1609,24 @@ function showProfilePhotoModal() {
     const currentPhoto = loadCustomProfilePhoto() || CLASSCHARTS_DEFAULT_PHOTO_URL;
 
     const bodyHtml = `
-        <div style="font-size: 1rem; color: #333; margin-bottom: 25px; background-color: #f7f7f7; padding: 15px; border-radius: 8px;">
-            <p style="font-weight: 600; color: ${PRIMARY_BLUE}; margin-bottom: 10px;">Your Privacy, Our Priority</p>
-            <p>This custom profile photo is <strong>only visible to you</strong>. It’s stored locally on this device until you connect an account in Settings, at which point it’s stored in the cloud (Supabase) on a server in ${SUPABASE_REGION_LABEL} for cross-device sync. It will not be shared with your school, teachers, or other students. You can change or remove it anytime.</p>
-        </div>
-        <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
-            <img id="cc-current-photo-preview" src="${currentPhoto}"
-                 alt="Current Profile Photo"
-                 style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid ${PRIMARY_BLUE};">
+        <div class="cc-settings-stack">
+            <div class="cc-settings-card-soft">
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 8px;">Your Privacy, Our Priority</h4>
+                <p class="cc-settings-subtitle" style="color:#4b5563;">This custom profile photo is <strong>only visible to you</strong>. It is stored locally on this device until you connect an account in Settings, at which point it is stored in the cloud (Supabase) on a server in ${SUPABASE_REGION_LABEL} for cross-device sync.</p>
+            </div>
+            <div class="cc-settings-card" style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+                <img id="cc-current-photo-preview" src="${currentPhoto}"
+                    alt="Current Profile Photo"
+                    style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid ${PRIMARY_BLUE};">
 
-            <input type="file" id="cc-photo-upload-input" accept="image/*" style="display: none;">
-            <button id="cc-photo-upload-btn" class="cc-notes-button cc-notes-save-btn" style="min-width: 180px;">
-                Upload New Photo
-            </button>
-            <button id="cc-photo-remove-btn" class="cc-notes-button cc-goals-cancel-btn" style="min-width: 180px;">
-                Remove Photo
-            </button>
+                <input type="file" id="cc-photo-upload-input" accept="image/*" style="display: none;">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+                    <button id="cc-photo-upload-btn" class="cc-notes-button cc-notes-save-btn" style="min-width: 180px;">Upload New Photo</button>
+                    <button id="cc-photo-remove-btn" class="cc-notes-button cc-goals-cancel-btn" style="min-width: 180px;">Remove Photo</button>
+                </div>
+            </div>
         </div>
-        <div style="display: flex; justify-content: flex-end; margin-top: 30px;">
+        <div class="cc-settings-actions" style="margin-top:24px;">
             <button id="cc-photo-close-btn" class="cc-notes-button cc-goals-cancel-btn">Done</button>
         </div>
     `;
@@ -1536,54 +1669,56 @@ function showAppearanceSettingsModal() {
     const currentAccent = getAccentColor();
 
     const bodyHtml = `
-        <div class="space-y-4">
-            <h3 style="font-size: 1.1rem; font-weight: 600; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 15px;">Positive Behavior Icon (The "+1" Icon)</h3>
-            <p style="font-size: 0.9rem; color: #555; margin-bottom: 20px;">Choose the icon that appears next to positive behavior points on the dashboard.</p>
-
-            <div style="display: flex; flex-direction: column; gap: 10px;" id="plus-one-icon-options">
-                <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; background-color: ${currentIcon === 'default' ? LIGHT_GREY : 'white'};">
-                    <input type="radio" name="plusOneIcon" value="default" style="margin-right: 15px; transform: scale(1.2);" ${currentIcon === 'default' ? 'checked' : ''}>
-                    <span style="font-weight: 500;">Original Icon (The default ClassCharts look)</span>
-                </label>
-
-                <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; background-color: ${currentIcon === 'smile.svg' ? LIGHT_GREY : 'white'};">
-                    <input type="radio" name="plusOneIcon" value="smile.svg" style="margin-right: 15px; transform: scale(1.2);" ${currentIcon === 'smile.svg' ? 'checked' : ''}>
-                    <img src="${getAssetUrl('smile.svg')}" alt="Smile Icon" style="width: 20px; height: 20px; margin-right: 10px;">
-                    <span style="font-weight: 500;">Smile Icon (Recommended)</span>
-                </label>
-
-                <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; background-color: ${currentIcon === 'award.svg' ? LIGHT_GREY : 'white'};">
-                    <input type="radio" name="plusOneIcon" value="award.svg" style="margin-right: 15px; transform: scale(1.2);" ${currentIcon === 'award.svg' ? 'checked' : ''}>
-                    <img src="${getAssetUrl('award.svg')}" alt="Award Icon" style="width: 20px; height: 20px; margin-right: 10px;">
-                    <span style="font-weight: 500;">Award Icon</span>
-                </label>
-            </div>
-
-            <h3 style="font-size: 1.1rem; font-weight: 600; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px;">Accent Colour</h3>
-            <p style="font-size: 0.9rem; color: #555; margin-bottom: 12px;">Pick a preset, or choose any custom colour.</p>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
-                <button class="cc-accent-preset" data-color="#039BE5" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #039BE5; cursor: pointer;"></button>
-                <button class="cc-accent-preset" data-color="#7C3AED" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #7C3AED; cursor: pointer;"></button>
-                <button class="cc-accent-preset" data-color="#10B981" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #10B981; cursor: pointer;"></button>
-                <button class="cc-accent-preset" data-color="#F59E0B" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #F59E0B; cursor: pointer;"></button>
-                <button class="cc-accent-preset" data-color="#EF4444" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #EF4444; cursor: pointer;"></button>
-                <div style="margin-left: 6px; display: flex; align-items: center; gap: 10px;">
-                    <input id="cc-accent-picker" type="color" value="${currentAccent}" style="width: 44px; height: 32px; border: none; background: transparent; cursor: pointer;">
-                    <input id="cc-accent-hex" type="text" value="${currentAccent}" class="cc-add-goal-input" style="width: 130px;" spellcheck="false">
+        <div class="cc-settings-stack">
+            <div class="cc-settings-card">
+                <h3 style="font-size: 1.1rem; font-weight: 600; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 15px;">Positive Behavior Icon (The "+1" Icon)</h3>
+                <p style="font-size: 0.9rem; color: #555; margin-bottom: 20px;">Choose the icon that appears next to positive behavior points on the dashboard.</p>
+                <div style="display: flex; flex-direction: column; gap: 10px;" id="plus-one-icon-options">
+                    <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background-color: ${currentIcon === 'default' ? LIGHT_GREY : 'white'};">
+                        <input type="radio" name="plusOneIcon" value="default" style="margin-right: 15px; transform: scale(1.2);" ${currentIcon === 'default' ? 'checked' : ''}>
+                        <span style="font-weight: 500;">Original Icon (The default ClassCharts look)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background-color: ${currentIcon === 'smile.svg' ? LIGHT_GREY : 'white'};">
+                        <input type="radio" name="plusOneIcon" value="smile.svg" style="margin-right: 15px; transform: scale(1.2);" ${currentIcon === 'smile.svg' ? 'checked' : ''}>
+                        <img src="${getAssetUrl('smile.svg')}" alt="Smile Icon" style="width: 20px; height: 20px; margin-right: 10px;">
+                        <span style="font-weight: 500;">Smile Icon (Recommended)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background-color: ${currentIcon === 'award.svg' ? LIGHT_GREY : 'white'};">
+                        <input type="radio" name="plusOneIcon" value="award.svg" style="margin-right: 15px; transform: scale(1.2);" ${currentIcon === 'award.svg' ? 'checked' : ''}>
+                        <img src="${getAssetUrl('award.svg')}" alt="Award Icon" style="width: 20px; height: 20px; margin-right: 10px;">
+                        <span style="font-weight: 500;">Award Icon</span>
+                    </label>
                 </div>
             </div>
 
-            <h3 style="font-size: 1.1rem; font-weight: 600; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px;">New Feature Toggles</h3>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background-color: white;">
-                <label for="cc-homework-hint-toggle" style="font-weight: 500; color: #333; flex-grow: 1;">Show Prominent Due Date on Homework Cards</label>
-                <label class="cc-switch">
-                    <input type="checkbox" id="cc-homework-hint-toggle" ${isHomeworkHintEnabled ? 'checked' : ''}>
-                    <span class="cc-slider round"></span>
-                </label>
+            <div class="cc-settings-card">
+                <h3 style="font-size: 1.1rem; font-weight: 600; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px; margin: 0 0 15px 0;">Accent Colour</h3>
+                <p style="font-size: 0.9rem; color: #555; margin-bottom: 12px;">Pick a preset, or choose any custom colour.</p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+                    <button class="cc-accent-preset" data-color="#039BE5" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #039BE5; cursor: pointer;"></button>
+                    <button class="cc-accent-preset" data-color="#7C3AED" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #7C3AED; cursor: pointer;"></button>
+                    <button class="cc-accent-preset" data-color="#10B981" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #10B981; cursor: pointer;"></button>
+                    <button class="cc-accent-preset" data-color="#F59E0B" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #F59E0B; cursor: pointer;"></button>
+                    <button class="cc-accent-preset" data-color="#EF4444" style="width: 28px; height: 28px; border-radius: 999px; border: 2px solid #e5e7eb; background: #EF4444; cursor: pointer;"></button>
+                    <div style="margin-left: 6px; display: flex; align-items: center; gap: 10px;">
+                        <input id="cc-accent-picker" type="color" value="${currentAccent}" style="width: 44px; height: 32px; border: none; background: transparent; cursor: pointer;">
+                        <input id="cc-accent-hex" type="text" value="${currentAccent}" class="cc-add-goal-input" style="width: 130px;" spellcheck="false">
+                    </div>
+                </div>
+            </div>
+
+            <div class="cc-settings-card">
+                <h3 style="font-size: 1.1rem; font-weight: 600; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px; margin: 0 0 15px 0;">New Feature Toggles</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 10px; background-color: white;">
+                    <label for="cc-homework-hint-toggle" style="font-weight: 500; color: #333; flex-grow: 1;">Show Prominent Due Date on Homework Cards</label>
+                    <label class="cc-switch">
+                        <input type="checkbox" id="cc-homework-hint-toggle" ${isHomeworkHintEnabled ? 'checked' : ''}>
+                        <span class="cc-slider round"></span>
+                    </label>
+                </div>
             </div>
         </div>
-        <div style="display: flex; justify-content: flex-end; margin-top: 30px;">
+        <div class="cc-settings-actions">
             <button id="cc-settings-close-btn" class="cc-settings-button cc-settings-save-btn">Close</button>
         </div>
     `;
@@ -1917,7 +2052,52 @@ function showReviewModal() {
             }
             .cc-review-logo {
                 width: 100px;
-                height: 100px; margin-bottom: 20px; border-radius: 16px; object-fit: contain; } .cc-review-btn-primary { background-color: ${POSITIVE_GREEN}; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; text-transform: uppercase; transition: background-color 0.2s, transform 0.1s; letter-spacing: 0.5px; } .cc-review-btn-primary:hover { background-color: #388E3C; } .cc-review-btn-secondary { background-color: #e0e0e0; color: #333; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: 500; transition: background-color 0.2s; } .cc-review-btn-secondary:hover { background-color: #bdbdbd; } </style> <div id="cc-review-modal-backdrop" class="cc-review-backdrop"> <div id="cc-review-modal-content" class="cc-review-card"> <img src="${logoUrl}" alt="ClassCharts Improver Logo" class="cc-review-logo"> <h2 style="font-size: 1.75rem; margin-bottom: 10px; color: ${PRIMARY_BLUE}; font-weight: 700;">Enjoying the Improver?</h2> <p style="font-size: 1rem; color: #444; line-height: 1.5; margin-bottom: 30px;"> A simple rating or review helps other students discover these useful features. Would you mind taking 30 seconds to support the extension? </p> <div style="display: flex; justify-content: center; gap: 15px;"> <button id="cc-review-later-btn" class="cc-review-btn-secondary"> Maybe Later </button> <a href="${reviewLink}" target="_blank" id="cc-review-link-btn" style="text-decoration: none;"> <button id="cc-review-dismiss-btn" class="cc-review-btn-primary"> Leave a Review </button> </a> </div> </div> </div> `;
+                height: 100px;
+                margin-bottom: 20px;
+                border-radius: 16px;
+                object-fit: contain;
+            }
+            .cc-review-btn-primary {
+                background-color: ${POSITIVE_GREEN};
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 600;
+                text-transform: uppercase;
+                transition: background-color 0.2s, transform 0.1s;
+                letter-spacing: 0.5px;
+            }
+            .cc-review-btn-primary:hover { background-color: #388E3C; }
+            .cc-review-btn-secondary {
+                background-color: #e0e0e0;
+                color: #333;
+                border: none;
+                padding: 10px 15px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 500;
+                transition: background-color 0.2s;
+            }
+            .cc-review-btn-secondary:hover { background-color: #bdbdbd; }
+        </style>
+        <div id="cc-review-modal-backdrop" class="cc-review-backdrop">
+            <div id="cc-review-modal-content" class="cc-review-card">
+                <img src="${logoUrl}" alt="ClassCharts Improver Logo" class="cc-review-logo">
+                <h2 style="font-size: 1.75rem; margin-bottom: 10px; color: ${PRIMARY_BLUE}; font-weight: 700;">Enjoying the Improver?</h2>
+                <p style="font-size: 1rem; color: #444; line-height: 1.5; margin-bottom: 30px;">
+                    A quick rating helps more students discover these features. Would you mind taking 30 seconds to support the extension?
+                </p>
+                <div style="display: flex; justify-content: center; gap: 15px;">
+                    <button id="cc-review-later-btn" class="cc-review-btn-secondary">Maybe later</button>
+                    <a href="${reviewLink}" target="_blank" id="cc-review-link-btn" style="text-decoration: none;">
+                        <button id="cc-review-dismiss-btn" class="cc-review-btn-primary">Leave a review</button>
+                    </a>
+                </div>
+            </div>
+        </div>
+    `;
     document.body.insertAdjacentHTML('beforeend', reviewHtml);
     const backdrop = document.getElementById('cc-review-modal-backdrop');
     const content = document.getElementById('cc-review-modal-content');
@@ -1933,6 +2113,7 @@ function showReviewModal() {
 
     const dismiss = () => {
         localStorage.setItem(REVIEW_SHOWN_KEY, 'true');
+        localStorage.setItem(REVIEW_LAST_SHOWN_AT_KEY, String(Date.now()));
         content.classList.remove('visible');
         backdrop.style.backgroundColor = 'transparent';
         setTimeout(() => {
@@ -1953,13 +2134,18 @@ function showReviewModal() {
 }
 
 function checkAndShowModals() {
+    const now = Date.now();
+    const lastShown = Number(localStorage.getItem(REVIEW_LAST_SHOWN_AT_KEY) || '0');
+    const intervalMs = getReviewIntervalDays() * 24 * 60 * 60 * 1000;
+    const shouldShowReview = !lastShown || (now - lastShown >= intervalMs);
+
     if (localStorage.getItem(WELCOME_SHOWN_KEY) !== 'true') {
         showWelcomeModal(() => {
-            if (localStorage.getItem(REVIEW_SHOWN_KEY) !== 'true') {
+            if (shouldShowReview) {
                 showReviewModal();
             }
         });
-    } else if (localStorage.getItem(REVIEW_SHOWN_KEY) !== 'true') {
+    } else if (shouldShowReview) {
         showReviewModal();
     }
 }
@@ -1971,7 +2157,7 @@ function injectReportConcernWarning() {
     const injectedClass = 'cc-improver-concern-warning';
 
     if (header && !reportConcernPage.querySelector('.' + injectedClass)) {
-        const iconUrl = getAssetUrl('alert-triangle.svg');
+        const iconUrl = getAssetUrl('alert-circle.svg');
         const warningHtml = `
             <div class="${injectedClass}" style="
                 background-color: #fffbeb;
