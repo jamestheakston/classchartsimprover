@@ -2,11 +2,12 @@
   "manifest_version": 3,
   "name": "ClassCharts Improver",
   "description": "Adds features to ClassCharts.",
-  "version": "5.6.7",
+  "version": "5.6.8",
   "background": {
     "service_worker": "service-worker.js"
   },
   "action": {},
+  "permissions": ["storage", "identity"],
   "content_scripts": [
     {
       "matches": [
@@ -18,7 +19,7 @@
       "run_at": "document_idle"
     }
   ],
-  "host_permissions": ["https://www.classcharts.com/*"],
+  "host_permissions": ["https://www.classcharts.com/*", "https://izcixahquohigrzghyqv.supabase.co/*"],
   "web_accessible_resources": [
     {
       "resources": [
