@@ -11,6 +11,129 @@ const PLUS_ONE_ICON_KEY = 'classcharts_improver_plus_one_icon';
 const HOMEWORK_DATE_HINT_KEY = 'classcharts_improver_homework_date_hint_enabled';
 const HOMEWORK_REDESIGN_KEY = 'classcharts_improver_homework_redesign_enabled';
 const ACCENT_COLOR_KEY = 'classcharts_improver_accent_color';
+
+// Feature toggles (all behind checkboxes in Settings → Feature Controls)
+const FEATURE_IMPROVED_UI_ENABLED_KEY = IMPROVED_UI_KEY;
+const FEATURE_CUSTOM_POSITIVE_ICON_ENABLED_KEY = 'classcharts_improver_feature_custom_positive_icon_enabled';
+const FEATURE_NOTES_ENABLED_KEY = 'classcharts_improver_feature_personal_notes_enabled';
+const FEATURE_GOALS_ENABLED_KEY = 'classcharts_improver_feature_goals_enabled';
+const FEATURE_PROFILE_PHOTO_ENABLED_KEY = 'classcharts_improver_feature_profile_photo_enabled';
+const FEATURE_ACCENT_COLOR_ENABLED_KEY = 'classcharts_improver_feature_accent_color_enabled';
+const FEATURE_REPORT_CONCERN_ENABLED_KEY = 'classcharts_improver_feature_report_concern_enabled';
+const FEATURE_CONTACT_LINK_ENABLED_KEY = 'classcharts_improver_feature_contact_link_enabled';
+const FEATURE_CODE_WARNING_ENABLED_KEY = 'classcharts_improver_feature_code_warning_enabled';
+const FEATURE_MESSAGES_PLACEHOLDER_ENABLED_KEY = 'classcharts_improver_feature_messages_placeholder_enabled';
+const FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY = 'classcharts_improver_feature_announcements_description_enabled';
+const FEATURE_REFRESH_TWEAKS_ENABLED_KEY = 'classcharts_improver_feature_refresh_tweaks_enabled';
+const FEATURE_DETENTION_CELEBRATION_ENABLED_KEY = 'classcharts_improver_feature_detention_celebration_enabled';
+const FEATURE_LOGIN_ALERT_ENABLED_KEY = 'classcharts_improver_feature_login_alert_enabled';
+const FEATURE_PROMPT_REVIEW_ENABLED_KEY = 'classcharts_improver_feature_prompt_review_enabled';
+const FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY = 'classcharts_improver_feature_show_safety_badges_enabled';
+const FEATURE_CLOUD_SYNC_ENABLED_KEY = 'classcharts_improver_feature_cloud_sync_enabled';
+
+const DARK_MODE_ENABLED_KEY = 'classcharts_improver_dark_mode_enabled';
+
+// Choose what to sync (cross-device). If disabled, we don't overwrite local/cloud values.
+const SYNC_IMPROVED_UI_ENABLED_KEY = 'classcharts_improver_sync_improved_ui_enabled';
+const SYNC_NOTES_ENABLED_KEY = 'classcharts_improver_sync_notes_enabled';
+const SYNC_GOALS_ENABLED_KEY = 'classcharts_improver_sync_goals_enabled';
+const SYNC_PROFILE_PHOTO_ENABLED_KEY = 'classcharts_improver_sync_profile_photo_enabled';
+const SYNC_CUSTOM_POSITIVE_ICON_ENABLED_KEY = 'classcharts_improver_sync_custom_positive_icon_enabled';
+const SYNC_ACCENT_COLOR_ENABLED_KEY = 'classcharts_improver_sync_accent_color_enabled';
+const SYNC_HOMEWORK_DATE_HINT_ENABLED_KEY = 'classcharts_improver_sync_homework_date_hint_enabled';
+const SYNC_HOMEWORK_REDESIGN_ENABLED_KEY = 'classcharts_improver_sync_homework_redesign_enabled';
+const SYNC_DARK_MODE_ENABLED_KEY = 'classcharts_improver_sync_dark_mode_enabled';
+const SYNC_PROMPT_REVIEW_ENABLED_KEY = 'classcharts_improver_sync_prompt_review_enabled';
+
+function getStoredBoolean(key, defaultValue) {
+    const raw = localStorage.getItem(key);
+    if (raw === null || raw === undefined) return defaultValue;
+    return raw === 'true';
+}
+
+function setStoredBoolean(key, enabled) {
+    localStorage.setItem(key, enabled ? 'true' : 'false');
+}
+
+function isCloudSyncEnabled() {
+    return getStoredBoolean(FEATURE_CLOUD_SYNC_ENABLED_KEY, true);
+}
+
+function isCustomPositiveIconEnabled() {
+    return getStoredBoolean(FEATURE_CUSTOM_POSITIVE_ICON_ENABLED_KEY, true);
+}
+
+function isNotesEnabled() {
+    return getStoredBoolean(FEATURE_NOTES_ENABLED_KEY, true);
+}
+
+function isGoalsEnabled() {
+    return getStoredBoolean(FEATURE_GOALS_ENABLED_KEY, true);
+}
+
+function isProfilePhotoEnabled() {
+    return getStoredBoolean(FEATURE_PROFILE_PHOTO_ENABLED_KEY, true);
+}
+
+function isAccentColorEnabled() {
+    return getStoredBoolean(FEATURE_ACCENT_COLOR_ENABLED_KEY, true);
+}
+
+function isFeatureEnabledByKey(key, defaultValue = true) {
+    return getStoredBoolean(key, defaultValue);
+}
+
+function getDarkModeEnabled() {
+    return getStoredBoolean(DARK_MODE_ENABLED_KEY, false);
+}
+
+function setDarkModeEnabled(enabled) {
+    setStoredBoolean(DARK_MODE_ENABLED_KEY, enabled);
+    applyDarkMode();
+    scheduleCloudSync();
+}
+
+function applyDarkMode() {
+    const enabled = getDarkModeEnabled();
+    document.documentElement.classList.toggle('cc-improver-dark-mode', enabled);
+
+    // Used by modal CSS (createBaseModal) so it can theme consistently.
+    if (enabled) {
+        document.documentElement.style.setProperty('--cc-improver-modal-bg', '#0b1220');
+        document.documentElement.style.setProperty('--cc-improver-modal-fg', '#e5e7eb');
+        document.documentElement.style.setProperty('--cc-improver-modal-header-bg', '#0f172a');
+        document.documentElement.style.setProperty('--cc-improver-settings-card-bg', '#0f172a');
+    } else {
+        document.documentElement.style.setProperty('--cc-improver-modal-bg', 'white');
+        document.documentElement.style.setProperty('--cc-improver-modal-fg', '#111827');
+        document.documentElement.style.setProperty('--cc-improver-modal-header-bg', '#f7f7f7');
+        document.documentElement.style.setProperty('--cc-improver-settings-card-bg', '#fff');
+    }
+}
+
+function isSyncEnabled(key, defaultValue = true) {
+    return getStoredBoolean(key, defaultValue);
+}
+
+function getSyncSettings() {
+    return {
+        improved_ui_enabled: isSyncEnabled(SYNC_IMPROVED_UI_ENABLED_KEY, true),
+        notes_enabled: isSyncEnabled(SYNC_NOTES_ENABLED_KEY, true),
+        goals_enabled: isSyncEnabled(SYNC_GOALS_ENABLED_KEY, true),
+        profile_photo_enabled: isSyncEnabled(SYNC_PROFILE_PHOTO_ENABLED_KEY, true),
+        custom_positive_icon_enabled: isSyncEnabled(SYNC_CUSTOM_POSITIVE_ICON_ENABLED_KEY, true),
+        accent_color_enabled: isSyncEnabled(SYNC_ACCENT_COLOR_ENABLED_KEY, true),
+        homework_date_hint_enabled: isSyncEnabled(SYNC_HOMEWORK_DATE_HINT_ENABLED_KEY, true),
+        homework_redesign_enabled: isSyncEnabled(SYNC_HOMEWORK_REDESIGN_ENABLED_KEY, true),
+        dark_mode_enabled: isSyncEnabled(SYNC_DARK_MODE_ENABLED_KEY, true),
+        prompt_review_enabled: isSyncEnabled(SYNC_PROMPT_REVIEW_ENABLED_KEY, true),
+    };
+}
+
+function setSyncSetting(key, enabled) {
+    setStoredBoolean(key, enabled);
+    scheduleCloudSync();
+}
 const MESSAGE_MENU_SELECTOR = '.MuiButtonBase-root.MuiListItem-root.desktop-drawer-pupil-menu-item:last-child';
 const DEFAULT_ACCENT_BLUE = '#039BE5';
 // Backwards-compat constant used throughout injected CSS.
@@ -42,7 +165,7 @@ function setAccentColor(hex) {
 }
 
 function applyAccentColor() {
-    const accent = getAccentColor();
+    const accent = isAccentColorEnabled() ? getAccentColor() : DEFAULT_ACCENT_BLUE;
     document.documentElement.style.setProperty('--cc-improver-accent', accent);
     document.documentElement.style.setProperty('--cc-improver-accent-rgb', hexToRgbCss(accent));
 }
@@ -95,10 +218,68 @@ function collectLocalSettings() {
 }
 
 async function upsertSettingsToCloud() {
+    if (!isCloudSyncEnabled()) return { ok: false, reason: 'cloud_sync_disabled' };
     const session = await ensureFreshSession();
     if (!session?.access_token || !session?.user?.id) return { ok: false, reason: 'not_connected' };
 
-    const body = { user_id: session.user.id, ...collectLocalSettings() };
+    const sync = {
+        improved: isSyncEnabled(SYNC_IMPROVED_UI_ENABLED_KEY, true),
+        notes: isSyncEnabled(SYNC_NOTES_ENABLED_KEY, true),
+        goals: isSyncEnabled(SYNC_GOALS_ENABLED_KEY, true),
+        profile_photo: isSyncEnabled(SYNC_PROFILE_PHOTO_ENABLED_KEY, true),
+        custom_positive_icon: isSyncEnabled(SYNC_CUSTOM_POSITIVE_ICON_ENABLED_KEY, true),
+        accent_color: isSyncEnabled(SYNC_ACCENT_COLOR_ENABLED_KEY, true),
+        homework_date_hint: isSyncEnabled(SYNC_HOMEWORK_DATE_HINT_ENABLED_KEY, true),
+        homework_redesign: isSyncEnabled(SYNC_HOMEWORK_REDESIGN_ENABLED_KEY, true),
+        dark_mode: isSyncEnabled(SYNC_DARK_MODE_ENABLED_KEY, true),
+        prompt_review: isSyncEnabled(SYNC_PROMPT_REVIEW_ENABLED_KEY, true),
+    };
+
+    // Always persist "what to sync" so other devices know what to apply.
+    const body = {
+        user_id: session.user.id,
+        sync_improved_ui_enabled: sync.improved,
+        sync_notes_enabled: sync.notes,
+        sync_goals_enabled: sync.goals,
+        sync_profile_photo_enabled: sync.profile_photo,
+        sync_custom_positive_icon_enabled: sync.custom_positive_icon,
+        sync_accent_color_enabled: sync.accent_color,
+        sync_homework_date_hint_enabled: sync.homework_date_hint,
+        sync_homework_redesign_enabled: sync.homework_redesign,
+        sync_dark_mode_enabled: sync.dark_mode,
+        sync_prompt_review_enabled: sync.prompt_review,
+        updated_at: new Date().toISOString(),
+    };
+
+    if (sync.improved) body.improved_ui_enabled = getImprovedUIStatus();
+    if (sync.notes) {
+        body.notes_enabled = isNotesEnabled();
+        body.notes = loadNotes();
+    }
+    if (sync.goals) {
+        body.goals_enabled = isGoalsEnabled();
+        body.goals = loadGoals();
+    }
+    if (sync.profile_photo) {
+        body.profile_photo_enabled = isProfilePhotoEnabled();
+        body.profile_photo = loadCustomProfilePhoto();
+    }
+    if (sync.custom_positive_icon) {
+        body.custom_positive_icon_enabled = isCustomPositiveIconEnabled();
+        body.plus_one_icon = getPlusOneIcon();
+    }
+    if (sync.accent_color) {
+        body.accent_color_enabled = isAccentColorEnabled();
+        body.accent_color = getAccentColor();
+    }
+    if (sync.homework_date_hint) body.homework_date_hint_enabled = getHomeworkDateHintStatus();
+    if (sync.homework_redesign) body.homework_redesign_enabled = getHomeworkRedesignStatus();
+    if (sync.dark_mode) body.dark_mode_enabled = getDarkModeEnabled();
+    if (sync.prompt_review) {
+        body.prompt_review_enabled = getStoredBoolean(FEATURE_PROMPT_REVIEW_ENABLED_KEY, true);
+        body.review_interval_days = getReviewIntervalDays();
+    }
+
     const resp = await fetch(`${SUPABASE_URL}/rest/v1/user_settings?on_conflict=user_id`, {
         method: 'POST',
         headers: {
@@ -118,6 +299,7 @@ async function upsertSettingsToCloud() {
 }
 
 async function pullSettingsFromCloud() {
+    if (!isCloudSyncEnabled()) return { ok: false, reason: 'cloud_sync_disabled' };
     const session = await ensureFreshSession();
     if (!session?.access_token || !session?.user?.id) return { ok: false, reason: 'not_connected' };
 
@@ -136,18 +318,74 @@ async function pullSettingsFromCloud() {
     const row = rows?.[0];
     if (!row) return { ok: true, empty: true };
 
-    if (typeof row.notes === 'string') saveNotes(row.notes);
-    if (Array.isArray(row.goals)) saveGoals(row.goals);
-    if (typeof row.profile_photo === 'string' || row.profile_photo === null) {
-        if (row.profile_photo) localStorage.setItem(PROFILE_PHOTO_STORAGE_KEY, row.profile_photo);
-        else localStorage.removeItem(PROFILE_PHOTO_STORAGE_KEY);
-    }
-    if (typeof row.accent_color === 'string') localStorage.setItem(ACCENT_COLOR_KEY, row.accent_color);
-    if (typeof row.plus_one_icon === 'string') localStorage.setItem(PLUS_ONE_ICON_KEY, row.plus_one_icon);
-    if (typeof row.homework_date_hint_enabled === 'boolean') localStorage.setItem(HOMEWORK_DATE_HINT_KEY, row.homework_date_hint_enabled ? 'true' : 'false');
-    if (typeof row.homework_redesign_enabled === 'boolean') localStorage.setItem(HOMEWORK_REDESIGN_KEY, row.homework_redesign_enabled ? 'true' : 'false');
-    if (typeof row.review_interval_days === 'number') localStorage.setItem(REVIEW_INTERVAL_DAYS_KEY, String(Math.min(Math.max(Math.floor(row.review_interval_days), 1), 365)));
+    // Persist sync selection locally first (so we know what to apply).
+    if (typeof row.sync_improved_ui_enabled === 'boolean') setStoredBoolean(SYNC_IMPROVED_UI_ENABLED_KEY, row.sync_improved_ui_enabled);
+    if (typeof row.sync_notes_enabled === 'boolean') setStoredBoolean(SYNC_NOTES_ENABLED_KEY, row.sync_notes_enabled);
+    if (typeof row.sync_goals_enabled === 'boolean') setStoredBoolean(SYNC_GOALS_ENABLED_KEY, row.sync_goals_enabled);
+    if (typeof row.sync_profile_photo_enabled === 'boolean') setStoredBoolean(SYNC_PROFILE_PHOTO_ENABLED_KEY, row.sync_profile_photo_enabled);
+    if (typeof row.sync_custom_positive_icon_enabled === 'boolean') setStoredBoolean(SYNC_CUSTOM_POSITIVE_ICON_ENABLED_KEY, row.sync_custom_positive_icon_enabled);
+    if (typeof row.sync_accent_color_enabled === 'boolean') setStoredBoolean(SYNC_ACCENT_COLOR_ENABLED_KEY, row.sync_accent_color_enabled);
+    if (typeof row.sync_homework_date_hint_enabled === 'boolean') setStoredBoolean(SYNC_HOMEWORK_DATE_HINT_ENABLED_KEY, row.sync_homework_date_hint_enabled);
+    if (typeof row.sync_homework_redesign_enabled === 'boolean') setStoredBoolean(SYNC_HOMEWORK_REDESIGN_ENABLED_KEY, row.sync_homework_redesign_enabled);
+    if (typeof row.sync_dark_mode_enabled === 'boolean') setStoredBoolean(SYNC_DARK_MODE_ENABLED_KEY, row.sync_dark_mode_enabled);
+    if (typeof row.sync_prompt_review_enabled === 'boolean') setStoredBoolean(SYNC_PROMPT_REVIEW_ENABLED_KEY, row.sync_prompt_review_enabled);
 
+    const sync = {
+        improved: isSyncEnabled(SYNC_IMPROVED_UI_ENABLED_KEY, true),
+        notes: isSyncEnabled(SYNC_NOTES_ENABLED_KEY, true),
+        goals: isSyncEnabled(SYNC_GOALS_ENABLED_KEY, true),
+        profile_photo: isSyncEnabled(SYNC_PROFILE_PHOTO_ENABLED_KEY, true),
+        custom_positive_icon: isSyncEnabled(SYNC_CUSTOM_POSITIVE_ICON_ENABLED_KEY, true),
+        accent_color: isSyncEnabled(SYNC_ACCENT_COLOR_ENABLED_KEY, true),
+        homework_date_hint: isSyncEnabled(SYNC_HOMEWORK_DATE_HINT_ENABLED_KEY, true),
+        homework_redesign: isSyncEnabled(SYNC_HOMEWORK_REDESIGN_ENABLED_KEY, true),
+        dark_mode: isSyncEnabled(SYNC_DARK_MODE_ENABLED_KEY, true),
+        prompt_review: isSyncEnabled(SYNC_PROMPT_REVIEW_ENABLED_KEY, true),
+    };
+
+    if (sync.improved && typeof row.improved_ui_enabled === 'boolean') {
+        setStoredBoolean(FEATURE_IMPROVED_UI_ENABLED_KEY, row.improved_ui_enabled);
+    }
+
+    if (sync.notes) {
+        if (typeof row.notes_enabled === 'boolean') setStoredBoolean(FEATURE_NOTES_ENABLED_KEY, row.notes_enabled);
+        if (typeof row.notes === 'string') localStorage.setItem(NOTES_STORAGE_KEY, row.notes);
+    }
+    if (sync.goals) {
+        if (typeof row.goals_enabled === 'boolean') setStoredBoolean(FEATURE_GOALS_ENABLED_KEY, row.goals_enabled);
+        if (row.goals) localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(row.goals));
+    }
+    if (sync.profile_photo) {
+        if (typeof row.profile_photo_enabled === 'boolean') setStoredBoolean(FEATURE_PROFILE_PHOTO_ENABLED_KEY, row.profile_photo_enabled);
+        if (typeof row.profile_photo === 'string') localStorage.setItem(PROFILE_PHOTO_STORAGE_KEY, row.profile_photo);
+        if (row.profile_photo === null) localStorage.removeItem(PROFILE_PHOTO_STORAGE_KEY);
+    }
+    if (sync.custom_positive_icon) {
+        if (typeof row.custom_positive_icon_enabled === 'boolean') setStoredBoolean(FEATURE_CUSTOM_POSITIVE_ICON_ENABLED_KEY, row.custom_positive_icon_enabled);
+        if (typeof row.plus_one_icon === 'string') localStorage.setItem(PLUS_ONE_ICON_KEY, row.plus_one_icon);
+    }
+    if (sync.accent_color) {
+        if (typeof row.accent_color_enabled === 'boolean') setStoredBoolean(FEATURE_ACCENT_COLOR_ENABLED_KEY, row.accent_color_enabled);
+        if (typeof row.accent_color === 'string') localStorage.setItem(ACCENT_COLOR_KEY, row.accent_color);
+    }
+    if (sync.homework_date_hint && typeof row.homework_date_hint_enabled === 'boolean') {
+        localStorage.setItem(HOMEWORK_DATE_HINT_KEY, row.homework_date_hint_enabled ? 'true' : 'false');
+    }
+    if (sync.homework_redesign && typeof row.homework_redesign_enabled === 'boolean') {
+        localStorage.setItem(HOMEWORK_REDESIGN_KEY, row.homework_redesign_enabled ? 'true' : 'false');
+    }
+    if (sync.dark_mode && typeof row.dark_mode_enabled === 'boolean') {
+        setStoredBoolean(DARK_MODE_ENABLED_KEY, row.dark_mode_enabled);
+    }
+    if (sync.prompt_review) {
+        if (typeof row.prompt_review_enabled === 'boolean') setStoredBoolean(FEATURE_PROMPT_REVIEW_ENABLED_KEY, row.prompt_review_enabled);
+        if (typeof row.review_interval_days === 'number') {
+            localStorage.setItem(REVIEW_INTERVAL_DAYS_KEY, String(Math.min(Math.max(Math.floor(row.review_interval_days), 1), 365)));
+        }
+    }
+
+    applyDarkMode();
+    applyImprovedUI(getImprovedUIStatus());
     applyAccentColor();
     applyCustomProfilePhoto();
     updateCustomIcons();
@@ -159,6 +397,7 @@ async function pullSettingsFromCloud() {
 
 let cloudSyncTimer = null;
 function scheduleCloudSync() {
+    if (!isCloudSyncEnabled()) return;
     if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
     cloudSyncTimer = setTimeout(() => {
         upsertSettingsToCloud().catch(() => {});
@@ -167,6 +406,7 @@ function scheduleCloudSync() {
 
 let autoSyncInterval = null;
 function startAutoCloudSync() {
+    if (!isCloudSyncEnabled()) return;
     if (autoSyncInterval) return;
     autoSyncInterval = setInterval(async () => {
         const session = await getCloudSession();
@@ -194,7 +434,7 @@ const MENU_ICON_RULES = [
     { match: ['wellbeing', 'well-being'], icon: 'smile.svg' },
     { match: ['timetable', 'time table'], icon: 'calendar.svg' },
     { match: ['badges', 'rewards', 'reward', 'my rewards', 'my reward'], icon: 'bar-chart-2.svg' },
-    { match: ['behaviour', 'behavior'], icon: 'alert-triangle.svg' },
+    { match: ['behaviour', 'behavior'], icon: 'home.svg' },
     { match: ['messages', 'message'], icon: 'message-square.svg' },
     { match: ['shop', 'store'], icon: 'shopping-bag.svg' },
     { match: ['clubs'], icon: 'users.svg' },
@@ -266,7 +506,7 @@ function loadCustomProfilePhoto() {
 }
 
 function getImprovedUIStatus() {
-    return true;
+    return getStoredBoolean(FEATURE_IMPROVED_UI_ENABLED_KEY, true);
 }
 
 function getPlusOneIcon() {
@@ -681,7 +921,17 @@ function updateDefaultIcons() {
     defaultMenuItems.forEach((item) => {
         const textSpan = item.querySelector('.MuiListItemText-primary');
         if (!textSpan) return;
-        const iconFile = resolveMenuIconFromLabel(textSpan.textContent);
+        const rawText = (textSpan.textContent || '').trim();
+        const normalized = normalizeMenuLabel(rawText);
+
+        // Special case requested: show the "Home" label for Behaviour menu item.
+        if (normalized.includes('behaviour') || normalized.includes('behavior')) {
+            textSpan.textContent = 'Home';
+            replaceIcon(item, 'home.svg');
+            return;
+        }
+
+        const iconFile = resolveMenuIconFromLabel(rawText);
         if (iconFile) replaceIcon(item, iconFile);
     });
 }
@@ -713,17 +963,17 @@ function createMenuItem() {
         return item;
     };
 
-    const notesItem = createItem('Personal Notes', NOTES_ICON_FILE, (event) => {
+    const notesItem = isNotesEnabled() ? createItem('Personal Notes', NOTES_ICON_FILE, (event) => {
         event.preventDefault();
         event.stopPropagation();
         showNotesModal();
-    }, 'cc-improver-notes-menu-item');
+    }, 'cc-improver-notes-menu-item') : null;
 
-    const goalsItem = createItem('Goals Tracker', GOALS_ICON_FILE, (event) => {
+    const goalsItem = isGoalsEnabled() ? createItem('Goals Tracker', GOALS_ICON_FILE, (event) => {
         event.preventDefault();
         event.stopPropagation();
         showGoalsModal();
-    }, 'cc-improver-goals-menu-item');
+    }, 'cc-improver-goals-menu-item') : null;
 
     const settingsHubItem = createItem('Settings & Customization', SETTINGS_ICON_FILE, (event) => {
         event.preventDefault();
@@ -740,11 +990,23 @@ function createMenuItem() {
 
     const finalDividerHtml = `<div class="cc-improver-divider" style="height: 1px; background-color: rgba(0, 0, 0, 0.12); margin: 0 16px;"></div>`;
 
-    messagesItem.after(notesItem);
-    notesItem.after(goalsItem);
-    notesItem.insertAdjacentHTML('beforebegin', improverHeaderHtml);
-
-    goalsItem.after(settingsHubItem);
+    if (notesItem) {
+        messagesItem.after(notesItem);
+        notesItem.insertAdjacentHTML('beforebegin', improverHeaderHtml);
+        if (goalsItem) {
+            notesItem.after(goalsItem);
+            goalsItem.after(settingsHubItem);
+        } else {
+            notesItem.after(settingsHubItem);
+        }
+    } else if (goalsItem) {
+        messagesItem.after(goalsItem);
+        goalsItem.insertAdjacentHTML('beforebegin', improverHeaderHtml);
+        goalsItem.after(settingsHubItem);
+    } else {
+        messagesItem.after(settingsHubItem);
+        settingsHubItem.insertAdjacentHTML('beforebegin', improverHeaderHtml);
+    }
     
     settingsHubItem.style.position = 'relative';
     settingsHubItem.style.overflow = 'visible';
@@ -780,24 +1042,26 @@ function createBaseModal(idPrefix, title, bodyHtml, maxWidth = '500px') {
     const modalHtml = `
         <style>
             .${idPrefix}-modal-card {
-                background-color: white;
+                background-color: var(--cc-improver-modal-bg, white);
+                color: var(--cc-improver-modal-fg, #111827);
                 border-radius: 12px;
                 width: 90%;
                 max-width: ${maxWidth};
                 box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
                 font-family: Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
-                overflow: hidden;
+                overflow: auto;
+                max-height: 85vh;
             }
             .${idPrefix}-modal-header {
                 padding: 18px 24px;
                 font-size: 1.5rem;
                 font-weight: 600;
-                color: #212121;
+                color: var(--cc-improver-modal-fg, #111827);
                 border-bottom: 1px solid #e0e0e0;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                background-color: #f7f7f7;
+                background-color: var(--cc-improver-modal-header-bg, #f7f7f7);
             }
             .${idPrefix}-modal-title-text {
                 flex-shrink: 1;
@@ -818,7 +1082,7 @@ function createBaseModal(idPrefix, title, bodyHtml, maxWidth = '500px') {
                 padding: 14px;
                 border: 1px solid #e5e7eb;
                 border-radius: 14px;
-                background: #fff;
+                background: var(--cc-improver-settings-card-bg, #fff);
             }
             .cc-settings-card-soft {
                 padding: 14px;
@@ -844,6 +1108,9 @@ function createBaseModal(idPrefix, title, bodyHtml, maxWidth = '500px') {
                 gap: 10px;
                 margin-top: 20px;
                 flex-wrap: wrap;
+            }
+            .hidden {
+                display: none !important;
             }
             .${idPrefix}-close-x {
                  background: none;
@@ -1131,6 +1398,23 @@ function showAllSettingsModal() {
                 UI Tweaks
                 <span style="font-size: 1.5rem; line-height: 1;">&rarr;</span>
             </button>
+            <button id="cc-open-feature-controls-modal" class="cc-settings-hub-button" style="
+                background-color: #EEF2FF;
+                color: #4338CA;
+                border: 1px solid #4338CA;
+                padding: 15px;
+                border-radius: 8px;
+                font-weight: 600;
+                text-align: left;
+                cursor: pointer;
+                transition: background-color 0.2s, box-shadow 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            ">
+                Feature Controls
+                <span style="font-size: 1.5rem; line-height: 1;">&rarr;</span>
+            </button>
             <button id="cc-open-account-sync-modal" class="cc-settings-hub-button" style="
                 background-color: #E0F2F1;
                 color: #00695C;
@@ -1194,6 +1478,11 @@ function showAllSettingsModal() {
         showUITweaksModal();
     });
 
+    document.getElementById('cc-open-feature-controls-modal').addEventListener('click', () => {
+        closeModal();
+        showFeatureControlsModal();
+    });
+
     document.getElementById('cc-open-account-sync-modal').addEventListener('click', () => {
         closeModal();
         showAccountSyncModal();
@@ -1202,6 +1491,141 @@ function showAllSettingsModal() {
     document.getElementById('cc-open-about-modal').addEventListener('click', () => {
         closeModal();
         showAboutModal();
+    });
+}
+
+function showFeatureControlsModal() {
+    const showBadges = getStoredBoolean(FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY, true);
+
+    const checkbox = (id) => {
+        const checked = getStoredBoolean(id, true) ? 'checked' : '';
+        return `
+            <input type="checkbox" id="${id}" ${checked} style="width: 18px; height: 18px;">
+        `;
+    };
+
+    const rows = [
+        { key: FEATURE_IMPROVED_UI_ENABLED_KEY, label: 'Improved UI', badge: '🟢', defaultEnabled: true },
+        { key: HOMEWORK_REDESIGN_KEY, label: 'Homework tab redesign', badge: '🟢', defaultEnabled: false },
+        { key: HOMEWORK_DATE_HINT_KEY, label: 'Homework due date hint', badge: '🟢', defaultEnabled: false },
+        { key: FEATURE_CUSTOM_POSITIVE_ICON_ENABLED_KEY, label: 'Custom +1 icon replacement', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_ACCENT_COLOR_ENABLED_KEY, label: 'Custom accent colour', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_PROFILE_PHOTO_ENABLED_KEY, label: 'Custom profile photo', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_NOTES_ENABLED_KEY, label: 'Personal Notes', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_GOALS_ENABLED_KEY, label: 'Goals Tracker', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_REPORT_CONCERN_ENABLED_KEY, label: 'Report concern warning', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_CONTACT_LINK_ENABLED_KEY, label: 'Contact extension link', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_CODE_WARNING_ENABLED_KEY, label: '“My code” warning', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_MESSAGES_PLACEHOLDER_ENABLED_KEY, label: 'Messages guide placeholder', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, label: 'Announcements description', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_REFRESH_TWEAKS_ENABLED_KEY, label: 'Refresh Tweaks button', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, label: 'Detention celebration', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_LOGIN_ALERT_ENABLED_KEY, label: 'Login active notice', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_PROMPT_REVIEW_ENABLED_KEY, label: 'Welcome/Review prompts', badge: '🟢', defaultEnabled: true },
+        { key: FEATURE_CLOUD_SYNC_ENABLED_KEY, label: 'Cloud sync (Supabase)', badge: '🟠', defaultEnabled: true },
+        { key: FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY, label: 'Show safety emojis in this list', badge: '🟢', defaultEnabled: true },
+        { key: DARK_MODE_ENABLED_KEY, label: 'Dark mode (extension UI)', badge: '🟢', defaultEnabled: false },
+    ];
+
+    const bodyHtml = `
+        <div class="cc-settings-stack">
+            <div class="cc-settings-card-soft">
+                <p class="cc-settings-subtitle" style="font-size:0.9rem;">
+                    Toggle each feature on/off. Changes take effect immediately (within a moment).
+                </p>
+            </div>
+
+            ${rows.map(r => {
+        const checked = getStoredBoolean(r.key, r.defaultEnabled);
+        return `
+                <div class="cc-settings-card" style="display:flex; align-items:center; justify-content: space-between; gap: 14px;">
+                    <div style="display:flex; align-items:center; gap: 10px; min-width: 0;">
+                        <span class="cc-safety-badge ${showBadges ? '' : 'hidden'}" style="width: 28px; text-align:center; font-size: 18px;">${r.badge}</span>
+                        <div style="display:flex; flex-direction: column; gap: 2px; min-width: 0;">
+                            <div style="font-weight: 700; color: #111827; white-space: nowrap; overflow:hidden; text-overflow: ellipsis;">${r.label}</div>
+                            <div style="font-size: 0.8rem; color:#6b7280;">${r.key === FEATURE_CLOUD_SYNC_ENABLED_KEY ? 'Syncing to Supabase when connected.' : 'Visual/UI-only unless otherwise noted.'}</div>
+                        </div>
+                    </div>
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                        <input type="checkbox" id="${r.key}" ${checked ? 'checked' : ''}>
+                    </label>
+                </div>
+            `;
+    }).join('')}
+
+            <div class="cc-settings-actions" style="margin-top: 6px;">
+                <button id="cc-feature-controls-done" class="cc-notes-button cc-notes-save-btn">Done</button>
+            </div>
+        </div>
+    `;
+
+    const { closeModal } = createBaseModal('cc-feature-controls', 'Feature Controls', bodyHtml, '560px');
+    document.getElementById('cc-feature-controls-done').addEventListener('click', closeModal);
+
+    // Apply immediate behavior when toggles change
+    const applyImmediately = () => {
+        applyImprovedUI(getImprovedUIStatus());
+        applyAccentColor();
+        applyCustomProfilePhoto();
+        updateCustomIcons();
+        injectHomeworkDateHint();
+        applyHomeworkRedesign();
+        applyDarkMode();
+
+        // Rebuild menu if notes/goals toggles changed
+        const menuInjected = document.querySelector('.cc-improver-header');
+        if (menuInjected) {
+            document.querySelectorAll('#cc-improver-notes-menu-item, #cc-improver-goals-menu-item, #cc-improver-settings-hub-menu-item, .cc-improver-header, .cc-improver-divider')
+                .forEach(el => el.remove());
+        }
+        if (!document.querySelector('.cc-improver-header') && (isNotesEnabled() || isGoalsEnabled())) {
+            const possible = document.querySelector(MESSAGE_MENU_SELECTOR);
+            if (possible) createMenuItem();
+        } else if (!document.querySelector('.cc-improver-header')) {
+            const possible = document.querySelector(MESSAGE_MENU_SELECTOR);
+            if (possible) createMenuItem();
+        }
+    };
+
+    rows.forEach(r => {
+        const el = document.getElementById(r.key);
+        if (!el) return;
+        el.addEventListener('change', () => {
+            if (r.key === HOMEWORK_REDESIGN_KEY) setHomeworkRedesignStatus(el.checked);
+            else if (r.key === HOMEWORK_DATE_HINT_KEY) setHomeworkDateHintStatus(el.checked);
+            else if (r.key === DARK_MODE_ENABLED_KEY) setDarkModeEnabled(el.checked);
+            else setStoredBoolean(r.key, el.checked);
+
+            if (r.key === FEATURE_CLOUD_SYNC_ENABLED_KEY) {
+                if (!el.checked && autoSyncInterval) {
+                    clearInterval(autoSyncInterval);
+                    autoSyncInterval = null;
+                }
+                if (el.checked) {
+                    getCloudSession().then((s) => {
+                        if (s?.access_token) {
+                            pullSettingsFromCloud().catch(() => {});
+                            startAutoCloudSync();
+                        }
+                    });
+                }
+            }
+
+            // Show/hide badges live
+            if (r.key === FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY) {
+                const hide = !el.checked;
+                document.querySelectorAll('.cc-safety-badge').forEach(b => {
+                    if (hide) b.classList.add('hidden');
+                    else b.classList.remove('hidden');
+                });
+            }
+
+            // Homework toggles use existing setters to stay consistent
+            if (r.key === HOMEWORK_REDESIGN_KEY) applyHomeworkRedesign();
+            if (r.key === HOMEWORK_DATE_HINT_KEY) injectHomeworkDateHint();
+
+            applyImmediately();
+        });
     });
 }
 
@@ -1301,6 +1725,44 @@ function showAccountSyncModal() {
                 </div>
             </div>
 
+            <div class="cc-settings-card-soft" style="border-color:#e5e7eb;">
+                <div style="font-weight: 800; color: #111827; margin-bottom: 8px;">Choose what to sync</div>
+                <div style="display:flex; flex-direction:column; gap: 10px;">
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
+                        <span style="color:#374151; font-weight:600;">Personal Notes</span>
+                        <input type="checkbox" id="${SYNC_NOTES_ENABLED_KEY}" ${isSyncEnabled(SYNC_NOTES_ENABLED_KEY, true) ? 'checked' : ''}>
+                    </label>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
+                        <span style="color:#374151; font-weight:600;">Goals</span>
+                        <input type="checkbox" id="${SYNC_GOALS_ENABLED_KEY}" ${isSyncEnabled(SYNC_GOALS_ENABLED_KEY, true) ? 'checked' : ''}>
+                    </label>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
+                        <span style="color:#374151; font-weight:600;">Profile photo</span>
+                        <input type="checkbox" id="${SYNC_PROFILE_PHOTO_ENABLED_KEY}" ${isSyncEnabled(SYNC_PROFILE_PHOTO_ENABLED_KEY, true) ? 'checked' : ''}>
+                    </label>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
+                        <span style="color:#374151; font-weight:600;">Custom +1 icon</span>
+                        <input type="checkbox" id="${SYNC_CUSTOM_POSITIVE_ICON_ENABLED_KEY}" ${isSyncEnabled(SYNC_CUSTOM_POSITIVE_ICON_ENABLED_KEY, true) ? 'checked' : ''}>
+                    </label>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
+                        <span style="color:#374151; font-weight:600;">Accent colour</span>
+                        <input type="checkbox" id="${SYNC_ACCENT_COLOR_ENABLED_KEY}" ${isSyncEnabled(SYNC_ACCENT_COLOR_ENABLED_KEY, true) ? 'checked' : ''}>
+                    </label>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
+                        <span style="color:#374151; font-weight:600;">Homework due date + days</span>
+                        <input type="checkbox" id="${SYNC_HOMEWORK_DATE_HINT_ENABLED_KEY}" ${isSyncEnabled(SYNC_HOMEWORK_DATE_HINT_ENABLED_KEY, true) ? 'checked' : ''}>
+                    </label>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
+                        <span style="color:#374151; font-weight:600;">Homework tab redesign</span>
+                        <input type="checkbox" id="${SYNC_HOMEWORK_REDESIGN_ENABLED_KEY}" ${isSyncEnabled(SYNC_HOMEWORK_REDESIGN_ENABLED_KEY, true) ? 'checked' : ''}>
+                    </label>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
+                        <span style="color:#374151; font-weight:600;">Dark mode</span>
+                        <input type="checkbox" id="${SYNC_DARK_MODE_ENABLED_KEY}" ${isSyncEnabled(SYNC_DARK_MODE_ENABLED_KEY, true) ? 'checked' : ''}>
+                    </label>
+                </div>
+            </div>
+
             <div class="cc-settings-actions" style="margin-top: 4px;">
                 <button id="cc-sync-pull" class="cc-notes-button cc-goals-cancel-btn">Pull</button>
                 <button id="cc-sync-push" class="cc-notes-button cc-notes-save-btn">Sync now</button>
@@ -1333,6 +1795,25 @@ function showAccountSyncModal() {
     };
 
     refreshStatus();
+
+    const syncKeys = [
+        SYNC_NOTES_ENABLED_KEY,
+        SYNC_GOALS_ENABLED_KEY,
+        SYNC_PROFILE_PHOTO_ENABLED_KEY,
+        SYNC_CUSTOM_POSITIVE_ICON_ENABLED_KEY,
+        SYNC_ACCENT_COLOR_ENABLED_KEY,
+        SYNC_HOMEWORK_DATE_HINT_ENABLED_KEY,
+        SYNC_HOMEWORK_REDESIGN_ENABLED_KEY,
+        SYNC_DARK_MODE_ENABLED_KEY,
+        SYNC_IMPROVED_UI_ENABLED_KEY
+    ];
+    syncKeys.forEach((key) => {
+        const el = document.getElementById(key);
+        if (!el) return;
+        el.addEventListener('change', (e) => {
+            setSyncSetting(key, e.target.checked);
+        });
+    });
 
     document.getElementById('cc-sync-connect-github').addEventListener('click', async () => {
         setStatus('Opening GitHub sign-in…', 'info');
@@ -1393,7 +1874,26 @@ function showAccountSyncModal() {
 }
 
 function showNotesModal() {
+    if (!isNotesEnabled()) return;
+    const showCloudWarning = isCloudSyncEnabled() && isSyncEnabled(SYNC_NOTES_ENABLED_KEY, true);
+    const warningHtml = showCloudWarning ? `
+        <div class="cc-settings-card-soft" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; margin-bottom: 14px; padding: 14px;">
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+                <img src="${getAssetUrl('shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
+                <div>
+                    <div style="font-weight:800; color:#9a3412; margin-bottom:4px;">Not encrypted</div>
+                    <div style="font-size:0.88rem; color:#7c2d12; line-height:1.35; margin-bottom: 8px;">
+                        If cross-device sync is enabled, your notes are stored in Supabase as plain text (not encrypted). Please review the privacy policy before enabling sync.
+                    </div>
+                    <a href="https://classchartsimprover.pages.dev/privacy" target="_blank" style="color:#b45309; font-weight:700; text-decoration:underline;">
+                        Review privacy policy
+                    </a>
+                </div>
+            </div>
+        </div>
+    ` : '';
     const bodyHtml = `
+        ${warningHtml}
         <div id="cc-notes-display" class="cc-notes-display-content">
         </div>
         <textarea id="cc-notes-textarea" class="cc-notes-textarea" placeholder="Write your notes here..." style="display: none;"></textarea>
@@ -1459,7 +1959,26 @@ function showNotesModal() {
 }
 
 function showGoalsModal() {
+    if (!isGoalsEnabled()) return;
+    const showCloudWarning = isCloudSyncEnabled() && isSyncEnabled(SYNC_GOALS_ENABLED_KEY, true);
+    const warningHtml = showCloudWarning ? `
+        <div class="cc-settings-card-soft" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; margin-bottom: 14px; padding: 14px;">
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+                <img src="${getAssetUrl('shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
+                <div>
+                    <div style="font-weight:800; color:#9a3412; margin-bottom:4px;">Not encrypted</div>
+                    <div style="font-size:0.88rem; color:#7c2d12; line-height:1.35; margin-bottom: 8px;">
+                        If cross-device sync is enabled, your goals are stored in Supabase as plain text/JSON (not encrypted). Please review the privacy policy before enabling sync.
+                    </div>
+                    <a href="https://classchartsimprover.pages.dev/privacy" target="_blank" style="color:#b45309; font-weight:700; text-decoration:underline;">
+                        Review privacy policy
+                    </a>
+                </div>
+            </div>
+        </div>
+    ` : '';
     const bodyHtml = `
+        ${warningHtml}
         <div style="font-size: 0.9rem; color: rgba(0, 0, 0, 0.6); margin-bottom: 10px;">Your pending and completed goals:</div>
         <ul id="cc-goal-list" class="cc-goal-list"></ul>
         <div class="cc-add-goal-container">
@@ -1580,19 +2099,22 @@ function showAboutModal() {
                 <p class="cc-settings-subtitle">This project enhances the ClassCharts student portal by adding helpful features. Your data is stored locally on this device by default, and can optionally sync via Supabase once you connect an account in Settings.</p>
             </div>
             <div class="cc-settings-card">
-                <h4 class="cc-settings-title">Project Info</h4>
-                <ul style="list-style-type: disc; padding-left: 20px; margin: 0; color: #444;">
-                    <li style="margin-bottom: 8px;"><strong>Version:</strong> 4.1 (Current Version Key: ${CURRENT_VERSION_KEY})</li>
-                    <li style="margin-bottom: 8px;"><strong>Feature 1:</strong> Personal Notes (A private notepad)</li>
-                    <li><strong>Feature 2:</strong> Goals Tracker (Define and track tasks/goals)</li>
-                    <li><strong>Feature 3:</strong> Custom Profile Photo (Visible only to you)</li>
-                </ul>
-            </div>
-            <div class="cc-settings-card">
-                <h4 class="cc-settings-title">Privacy Notice</h4>
-                <p class="cc-settings-subtitle" style="color: #4b5563;">
-                    By default, this extension stores your notes, goals, and customization settings locally on this device. If you choose to connect an account in <strong>Settings → Account &amp; Sync</strong>, your settings are stored in the cloud (Supabase) on a server in ${SUPABASE_REGION_LABEL} to enable cross-device sync.
+                <h4 class="cc-settings-title">Privacy</h4>
+                <p class="cc-settings-subtitle" style="color: #4b5563; margin-bottom: 14px;">
+                    View the full privacy policy for ClassCharts Improver.
                 </p>
+                <a href="https://classchartsimprover.pages.dev/privacy" target="_blank" style="
+                    color: ${PRIMARY_BLUE};
+                    font-weight: 800;
+                    text-decoration: underline;
+                    display: inline-block;
+                    padding: 10px 12px;
+                    border-radius: 10px;
+                    border: 1px solid rgba(3,155,229,0.35);
+                    background: rgba(3,155,229,0.06);
+                ">
+                    View Privacy Policy
+                </a>
             </div>
             <p style="font-size: 0.8rem; color: #9ca3af; margin: 0;">&copy; James Theakston 2026</p>
         </div>
@@ -1606,10 +2128,29 @@ function showAboutModal() {
 }
 
 function showProfilePhotoModal() {
+    if (!isProfilePhotoEnabled()) return;
     const currentPhoto = loadCustomProfilePhoto() || CLASSCHARTS_DEFAULT_PHOTO_URL;
+    const showCloudWarning = isCloudSyncEnabled() && isSyncEnabled(SYNC_PROFILE_PHOTO_ENABLED_KEY, true);
+    const warningHtml = showCloudWarning ? `
+        <div class="cc-settings-card-soft" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; margin-bottom: 14px; padding: 14px;">
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+                <img src="${getAssetUrl('shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
+                <div>
+                    <div style="font-weight:800; color:#9a3412; margin-bottom:4px;">Not encrypted</div>
+                    <div style="font-size:0.88rem; color:#7c2d12; line-height:1.35; margin-bottom: 8px;">
+                        If cross-device sync is enabled, your profile photo is stored in Supabase as an image asset (not encrypted). Please review the privacy policy before enabling sync.
+                    </div>
+                    <a href="https://classchartsimprover.pages.dev/privacy" target="_blank" style="color:#b45309; font-weight:700; text-decoration:underline;">
+                        Review privacy policy
+                    </a>
+                </div>
+            </div>
+        </div>
+    ` : '';
 
     const bodyHtml = `
         <div class="cc-settings-stack">
+            ${warningHtml}
             <div class="cc-settings-card-soft">
                 <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 8px;">Your Privacy, Our Priority</h4>
                 <p class="cc-settings-subtitle" style="color:#4b5563;">This custom profile photo is <strong>only visible to you</strong>. It is stored locally on this device until you connect an account in Settings, at which point it is stored in the cloud (Supabase) on a server in ${SUPABASE_REGION_LABEL} for cross-device sync.</p>
@@ -1801,7 +2342,7 @@ function setupKeyComboListener() {
 }
 
 function applyCustomProfilePhoto() {
-    const customPhotoUrl = loadCustomProfilePhoto();
+    const customPhotoUrl = isProfilePhotoEnabled() ? loadCustomProfilePhoto() : null;
     const profileImages = document.querySelectorAll('img.jss32, img[src*="' + PROFILE_IMAGE_DEFAULT_SRC_PATTERN + '"]');
 
     profileImages.forEach(img => {
@@ -1818,7 +2359,7 @@ function applyCustomProfilePhoto() {
 }
 
 function updateCustomIcons() {
-    const iconToUse = getPlusOneIcon();
+    const iconToUse = isCustomPositiveIconEnabled() ? getPlusOneIcon() : 'default';
 
     const achievementSelectors = ['.jss63', '.jss66'];
     const positiveElements = document.querySelectorAll(achievementSelectors.join(', '));
@@ -1887,11 +2428,46 @@ function injectHomeworkDateHint() {
             const dateMatch = fullDateText.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
             const dateText = dateMatch ? dateMatch[0] : fullDateText.replace(/due:/i, '').trim();
 
+            const parseDueDate = (text) => {
+                const m = (text || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+                if (!m) return null;
+                const p1 = Number(m[1]);
+                const p2 = Number(m[2]);
+                let year = Number(m[3]);
+                if (!Number.isFinite(p1) || !Number.isFinite(p2) || !Number.isFinite(year)) return null;
+                if (year < 100) year += 2000;
+                let day;
+                let month;
+                // Heuristic: if one side can't be a month, treat it as the day.
+                if (p1 > 12 && p2 <= 12) { day = p1; month = p2; }
+                else if (p2 > 12 && p1 <= 12) { day = p2; month = p1; }
+                else { day = p1; month = p2; }
+                const dt = new Date(year, month - 1, day);
+                if (isNaN(dt.getTime())) return null;
+                return dt;
+            };
+
+            const dueDate = parseDueDate(dateText);
+            let daysUntilText = null;
+            if (dueDate) {
+                const now = new Date();
+                const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                const dueMidnight = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate()).getTime();
+                const msPerDay = 24 * 60 * 60 * 1000;
+                const daysUntil = Math.ceil((dueMidnight - todayMidnight) / msPerDay);
+                if (daysUntil === 0) daysUntilText = 'Due today';
+                else if (daysUntil > 0) daysUntilText = `In ${daysUntil} days`;
+                else daysUntilText = `${Math.abs(daysUntil)} days overdue`;
+            }
+
             const cardHeader = card.querySelector('.MuiCardHeader-root');
             if (cardHeader) {
                 const hint = document.createElement('div');
                 hint.className = hintClass;
-                hint.innerHTML = `<strong style="font-size: 0.7rem; color: #E53935; text-transform: uppercase; margin-right: 5px;">Due Date:</strong> ${dateText}`;
+                hint.innerHTML = `
+                    <div><strong style="font-size: 0.7rem; color: #E53935; text-transform: uppercase; margin-right: 5px;">Due Date:</strong> ${dateText}</div>
+                    ${daysUntilText ? `<div><strong style="font-size: 0.7rem; color: #D81B60; text-transform: uppercase; margin-right: 5px;">Days until due:</strong> ${daysUntilText}</div>` : ''}
+                `;
                 hint.style.cssText = `
                     font-size: 0.9rem;
                     color: #d81b60;
@@ -1899,7 +2475,9 @@ function injectHomeworkDateHint() {
                     padding: 4px 8px;
                     border-radius: 4px;
                     margin-top: 5px;
-                    display: inline-block;
+                    display: inline-flex;
+                    flex-direction: column;
+                    gap: 4px;
                     font-weight: 500;
                 `;
                 cardHeader.insertAdjacentElement('afterend', hint);
@@ -2134,6 +2712,7 @@ function showReviewModal() {
 }
 
 function checkAndShowModals() {
+    if (!getStoredBoolean(FEATURE_PROMPT_REVIEW_ENABLED_KEY, true)) return;
     const now = Date.now();
     const lastShown = Number(localStorage.getItem(REVIEW_LAST_SHOWN_AT_KEY) || '0');
     const intervalMs = getReviewIntervalDays() * 24 * 60 * 60 * 1000;
@@ -2157,7 +2736,7 @@ function injectReportConcernWarning() {
     const injectedClass = 'cc-improver-concern-warning';
 
     if (header && !reportConcernPage.querySelector('.' + injectedClass)) {
-        const iconUrl = getAssetUrl('alert-circle.svg');
+        const iconUrl = getAssetUrl('alert-triangle.svg');
         const warningHtml = `
             <div class="${injectedClass}" style="
                 background-color: #fffbeb;
@@ -2234,25 +2813,8 @@ function injectCodeWarning() {
 }
 
 function injectMessagesPlaceholderContent() {
-    const placeholderDiv = Array.from(document.querySelectorAll('div')).find(el => 
-        el.textContent.trim() === 'Please select a thread on the left side to view the messages'
-    );
-    const injectedClass = 'cc-improver-messages-guide';
-
-    if (placeholderDiv && !placeholderDiv.classList.contains(injectedClass)) {
-        placeholderDiv.classList.add(injectedClass);
-        placeholderDiv.textContent = 'Select a teacher on the left side to view the messages you have exchanged.';
-
-        const imgUrl = getAssetUrl('threadtutorial.png');
-        const img = document.createElement('img');
-        img.src = imgUrl;
-        img.alt = 'Guide showing how to select a teacher thread';
-
-        placeholderDiv.style.cssText = 'text-align: center; padding-top: 40px; font-weight: 500; color: #444;';
-        img.style.cssText = 'max-width: 100%; height: auto; margin-top: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);';
-
-        placeholderDiv.appendChild(img);
-    }
+    // Disabled: keep ClassCharts messages UI default.
+    // (Previously this injected a guide overlay; you asked to remove it.)
 }
 
 function injectAnnouncementsDescription() {
@@ -2409,6 +2971,7 @@ function initObserver() {
     let attempts = 0;
     const maxAttempts = 30;
 
+    applyDarkMode();
     applyAccentColor();
     getCloudSession().then((session) => {
         if (session?.access_token) {
@@ -2437,13 +3000,22 @@ function initObserver() {
             }
         }
 
-        injectReportConcernWarning();
-        injectContactLink();
-        injectCodeWarning();
-        injectMessagesPlaceholderContent();
-        injectAnnouncementsDescription();
-        injectRefreshTweaksButton();
-        injectDetentionCelebration();
+        if (!isFeatureEnabledByKey(FEATURE_CONTACT_LINK_ENABLED_KEY, true)) document.querySelectorAll('.cc-improver-contact-link').forEach(el => el.remove());
+        if (!isFeatureEnabledByKey(FEATURE_CODE_WARNING_ENABLED_KEY, true)) document.querySelectorAll('.cc-improver-code-warning').forEach(el => el.remove());
+        if (!isFeatureEnabledByKey(FEATURE_MESSAGES_PLACEHOLDER_ENABLED_KEY, true)) document.querySelectorAll('.cc-improver-messages-guide').forEach(el => el.remove());
+        if (!isFeatureEnabledByKey(FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, true)) document.querySelectorAll('.cc-improver-announcements-desc').forEach(el => el.remove());
+        if (!isFeatureEnabledByKey(FEATURE_REFRESH_TWEAKS_ENABLED_KEY, true)) document.querySelectorAll('.cc-improver-refresh-button').forEach(el => el.remove());
+        if (!isFeatureEnabledByKey(FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, true)) document.querySelectorAll('.cc-improver-detention-success').forEach(el => el.remove());
+
+        if (isFeatureEnabledByKey(FEATURE_REPORT_CONCERN_ENABLED_KEY, true)) injectReportConcernWarning();
+        else document.querySelectorAll('.cc-improver-concern-warning').forEach(el => el.remove());
+
+        if (isFeatureEnabledByKey(FEATURE_CONTACT_LINK_ENABLED_KEY, true)) injectContactLink();
+        if (isFeatureEnabledByKey(FEATURE_CODE_WARNING_ENABLED_KEY, true)) injectCodeWarning();
+        if (false) injectMessagesPlaceholderContent();
+        if (isFeatureEnabledByKey(FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, true)) injectAnnouncementsDescription();
+        if (isFeatureEnabledByKey(FEATURE_REFRESH_TWEAKS_ENABLED_KEY, true)) injectRefreshTweaksButton();
+        if (isFeatureEnabledByKey(FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, true)) injectDetentionCelebration();
 
         if (attempts >= maxAttempts) {
             clearInterval(interval);
@@ -2452,6 +3024,10 @@ function initObserver() {
     }, 500);
 }
 
-injectLoginAlert();
+if (isFeatureEnabledByKey(FEATURE_LOGIN_ALERT_ENABLED_KEY, true)) {
+    injectLoginAlert();
+} else {
+    document.querySelectorAll('.cc-improver-login-alert').forEach(el => el.remove());
+}
 setupKeyComboListener();
 initObserver();
