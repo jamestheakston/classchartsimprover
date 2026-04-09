@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ClassCharts Improver",
   "description": "Adds features to ClassCharts.",
-  "version": "5.6.8",
+  "version": "5.6.9",
   "background": {
     "service_worker": "service-worker.js"
   },
@@ -30,7 +30,8 @@
         "assets/icons/icon-128.png",
         "assets/feather/*",
         "assets/*.html",
-        "assets/*.js"
+        "assets/*.js",
+        "tailwind-custom.css"
       ],
       "matches": ["https://www.classcharts.com/*"]
     }
