@@ -124,6 +124,41 @@ async function signInWithOAuthGithub() {
   return session;
 }
 
+async function signInWithOAuthGoogle() {
+  const redirectTo = chrome.identity.getRedirectURL('supabase');
+  const codeVerifier = randomString(64);
+  const codeChallenge = base64UrlEncode(await sha256(codeVerifier));
+
+  await storageSet({ [PKCE_VERIFIER_KEY]: { codeVerifier, redirectTo, createdAt: Date.now() } });
+
+  const authUrl = new URL(`${SUPABASE_URL}/auth/v1/authorize`);
+  authUrl.searchParams.set('provider', 'google');
+  authUrl.searchParams.set('redirect_to', redirectTo);
+  authUrl.searchParams.set('code_challenge', codeChallenge);
+  authUrl.searchParams.set('code_challenge_method', 'S256');
+
+  const redirectUri = await new Promise((resolve, reject) => {
+    chrome.identity.launchWebAuthFlow(
+      { url: authUrl.toString(), interactive: true },
+      (responseUrl) => {
+        if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+        resolve(responseUrl);
+      }
+    );
+  });
+
+  const returned = new URL(redirectUri);
+  const code = returned.searchParams.get('code');
+  if (!code) throw new Error('Missing auth code in redirect URL');
+
+  const pkce = (await storageGet(PKCE_VERIFIER_KEY))[PKCE_VERIFIER_KEY];
+  if (!pkce?.codeVerifier) throw new Error('Missing PKCE verifier');
+
+  const session = await exchangeCodeForSession(code, pkce.codeVerifier, pkce.redirectTo);
+  await storageRemove(PKCE_VERIFIER_KEY);
+  return session;
+}
+
 async function sendMagicLink(email) {
   const redirectTo = chrome.identity.getRedirectURL('supabase');
   const codeVerifier = randomString(64);
@@ -212,6 +247,46 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       }
       case 'SUPABASE_SIGN_IN_GITHUB': {
         sendResponse({ session: await signInWithOAuthGithub() });
+        return;
+      }
+      case 'SUPABASE_SIGN_IN_GOOGLE': {
+        sendResponse({ session: await signInWithOAuthGoogle() });
+        return;
+      }
+      case 'SUPABASE_RESET_PASSWORD': {
+        const redirectTo = chrome.identity.getRedirectURL('supabase');
+        const resp = await supabaseFetch(`/auth/v1/recover`, {
+          method: 'POST',
+          body: JSON.stringify({ 
+            email: message.email,
+            gotrue_meta_security: {
+              redirect_to: redirectTo
+            }
+          }),
+        });
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(`Password reset failed: ${resp.status} ${text}`);
+        }
+        sendResponse({ ok: true });
+        return;
+      }
+      case 'SUPABASE_DELETE_ACCOUNT': {
+        const session = await getSession();
+        if (!session?.access_token) throw new Error('Not authenticated');
+        
+        const resp = await supabaseFetch(`/auth/v1/user`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(`Account deletion failed: ${resp.status} ${text}`);
+        }
+        await clearSession();
+        sendResponse({ ok: true });
         return;
       }
       case 'SUPABASE_SIGN_IN_PASSWORD': {
