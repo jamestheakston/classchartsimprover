@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_2';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_3';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -560,7 +560,7 @@ const getAssetUrl = (filename) => {
 function replaceClassChartsLogo() {
     const mainLogo = document.querySelector('img[src*="CC_logo.png"], img[alt="Logo"]');
     if (mainLogo) {
-        mainLogo.src = getAssetUrl('feather/customlogo.png');
+        mainLogo.src = getAssetUrl('customlogo.png');
         mainLogo.alt = 'ClassCharts Improver Logo';
     }
 }
@@ -854,13 +854,13 @@ function applyHomeworkRedesign() {
         
         const calendarIconContainer = document.querySelector('.calendar-header .MuiButton-label');
         if (calendarIconContainer && !calendarIconContainer.querySelector('.cc-feather-icon')) {
-            calendarIconContainer.innerHTML = `<img src="${getAssetUrl('feather/calendar.svg')}" class="cc-feather-icon" style="width:20px; height:20px; filter:brightness(0) invert(1);">`;
+            calendarIconContainer.innerHTML = `<img src="${getAssetUrl('calendar.svg')}" class="cc-feather-icon" style="width:20px; height:20px; filter:brightness(0) invert(1);">`;
         }
 
         const expandButtons = document.querySelectorAll('.expand-button .MuiIconButton-label');
         expandButtons.forEach(btn => {
             if (!btn.querySelector('.cc-feather-icon')) {
-                btn.innerHTML = `<img src="${getAssetUrl('feather/chevron-down.svg')}" class="cc-feather-icon" style="width:24px; height:24px; opacity:0.6;">`;
+                btn.innerHTML = `<img src="${getAssetUrl('chevron-down.svg')}" class="cc-feather-icon" style="width:24px; height:24px; opacity:0.6;">`;
             }
         });
     } else {
@@ -1707,11 +1707,11 @@ function showAccountSyncModal() {
                 <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 12px;">Quick Connect</h4>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                     <button id="cc-sync-connect-github" class="cc-notes-button cc-notes-save-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px;">
-                        <img src="${getAssetUrl('feather/github.svg')}" alt="" style="width: 18px; height: 18px;">
+                        <img src="${getAssetUrl('github.svg')}" alt="" style="width: 18px; height: 18px;">
                         GitHub
                     </button>
                     <button id="cc-sync-connect-google" class="cc-notes-button cc-notes-save-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: #4285f4; border-color: #4285f4;">
-                        <img src="${getAssetUrl('feather/chrome.svg')}" alt="" style="width: 18px; height: 18px; filter: brightness(0) invert(1);">
+                        <img src="${getAssetUrl('chrome.svg')}" alt="" style="width: 18px; height: 18px; filter: brightness(0) invert(1);">
                         Google
                     </button>
                 </div>
@@ -1897,7 +1897,7 @@ function showNotesModal() {
     const warningHtml = showCloudWarning ? `
         <div class="cc-settings-card-soft" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; margin-bottom: 14px; padding: 14px;">
             <div style="display:flex; gap:12px; align-items:flex-start;">
-                <img src="${getAssetUrl('feather/shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
+                <img src="${getAssetUrl('shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
                 <div>
                     <div style="font-weight:800; color:#9a3412; margin-bottom:4px;">Not encrypted</div>
                     <div style="font-size:0.88rem; color:#7c2d12; line-height:1.35; margin-bottom: 8px;">
@@ -1982,7 +1982,7 @@ function showGoalsModal() {
     const warningHtml = showCloudWarning ? `
         <div class="cc-settings-card-soft" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; margin-bottom: 14px; padding: 14px;">
             <div style="display:flex; gap:12px; align-items:flex-start;">
-                <img src="${getAssetUrl('feather/shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
+                <img src="${getAssetUrl('shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
                 <div>
                     <div style="font-weight:800; color:#9a3412; margin-bottom:4px;">Not encrypted</div>
                     <div style="font-size:0.88rem; color:#7c2d12; line-height:1.35; margin-bottom: 8px;">
@@ -2133,7 +2133,7 @@ function showAboutModal() {
                     border: 1px solid rgba(3,155,229,0.35);
                     background: rgba(3,155,229,0.06);
                 ">
-                    <img src="${getAssetUrl('feather/github.svg')}" alt="GitHub" style="width: 18px; height: 18px;">
+                    <img src="${getAssetUrl('github.svg')}" alt="GitHub" style="width: 18px; height: 18px;">
                     View on GitHub
                 </a>
             </div>
@@ -2190,7 +2190,7 @@ function showProfilePhotoModal() {
     const warningHtml = showCloudWarning ? `
         <div class="cc-settings-card-soft" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; margin-bottom: 14px; padding: 14px;">
             <div style="display:flex; gap:12px; align-items:flex-start;">
-                <img src="${getAssetUrl('feather/shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
+                <img src="${getAssetUrl('shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
                 <div>
                     <div style="font-weight:800; color:#9a3412; margin-bottom:4px;">Not encrypted</div>
                     <div style="font-size:0.88rem; color:#7c2d12; line-height:1.35; margin-bottom: 8px;">
@@ -2440,12 +2440,12 @@ function showAppearanceSettingsModal() {
                     </label>
                     <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background-color: ${currentIcon === 'smile.svg' ? LIGHT_GREY : 'white'};">
                         <input type="radio" name="plusOneIcon" value="smile.svg" style="margin-right: 15px; transform: scale(1.2);" ${currentIcon === 'smile.svg' ? 'checked' : ''}>
-                        <img src="${getAssetUrl('feather/smile.svg')}" alt="Smile Icon" style="width: 20px; height: 20px; margin-right: 10px;">
+                        <img src="${getAssetUrl('smile.svg')}" alt="Smile Icon" style="width: 20px; height: 20px; margin-right: 10px;">
                         <span style="font-weight: 500;">Smile Icon (Recommended)</span>
                     </label>
                     <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background-color: ${currentIcon === 'award.svg' ? LIGHT_GREY : 'white'};">
                         <input type="radio" name="plusOneIcon" value="award.svg" style="margin-right: 15px; transform: scale(1.2);" ${currentIcon === 'award.svg' ? 'checked' : ''}>
-                        <img src="${getAssetUrl('feather/award.svg')}" alt="Award Icon" style="width: 20px; height: 20px; margin-right: 10px;">
+                        <img src="${getAssetUrl('award.svg')}" alt="Award Icon" style="width: 20px; height: 20px; margin-right: 10px;">
                         <span style="font-weight: 500;">Award Icon</span>
                     </label>
                 </div>
@@ -3078,7 +3078,7 @@ function injectHomeworkDateHint() {
 }
 
 function showWelcomeModal(callback) {
-    const logoUrl = getAssetUrl('feather/customlogo.png');
+    const logoUrl = getAssetUrl('customlogo.png');
     const welcomeHtml = `
         <style>
             .cc-welcome-card {
@@ -3185,7 +3185,7 @@ function showWelcomeModal(callback) {
 }
 
 function showReviewModal() {
-    const logoUrl = getAssetUrl('feather/customlogo.png');
+    const logoUrl = getAssetUrl('customlogo.png');
     const reviewLink = 'https://chromewebstore.google.com/detail/classcharts-improver/kalmdpfngeebamgaeegkieojhbkbghoe';
 
     const reviewHtml = `
@@ -3327,7 +3327,7 @@ function injectReportConcernWarning() {
     const injectedClass = 'cc-improver-concern-warning';
 
     if (header && !reportConcernPage.querySelector('.' + injectedClass)) {
-        const iconUrl = getAssetUrl('feather/alert-triangle.svg');
+        const iconUrl = getAssetUrl('alert-triangle.svg');
         const warningHtml = `
             <div class="${injectedClass}" style="
                 background-color: #fffbeb;
