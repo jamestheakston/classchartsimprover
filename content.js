@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_1';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_2';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -1686,88 +1686,93 @@ function showAccountSyncModal() {
     const bodyHtml = `
         <div class="cc-settings-stack">
             <div class="cc-settings-card-soft">
-                <div style="font-weight: 800; color: #111827; margin-bottom: 6px; font-size: 1rem;">Cloud Sync</div>
-                <div style="font-size: 0.88rem; color: #4b5563; line-height: 1.4;">
-                    Your settings are stored locally on this device by default. When connected, they sync automatically to Supabase (server region: ${SUPABASE_REGION_LABEL}). Please ensure you have read and you agree to <a href="https://classchartsimprover.pages.dev/privacy" class="text-blue-600 hover:text-blue-800 underline decoration-blue-600 hover:decoration-blue-800 transition-colors duration-200">
-        our privacy policy
-    </a> before you link your account.
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 8px;">Cloud Sync</h4>
+                <p class="cc-settings-subtitle" style="color: #4b5563; line-height: 1.4;">
+                    Your settings are stored locally on this device by default. When connected, they sync automatically to Supabase (server region: ${SUPABASE_REGION_LABEL}).
+                </p>
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 12px;">
+                    <p style="margin: 0; font-size: 0.85rem; color: #6b7280;">
+                        By connecting an account, you agree to our 
+                        <a href="https://classchartsimprover.pages.dev/privacy" target="_blank" style="color: ${PRIMARY_BLUE}; text-decoration: underline; font-weight: 600;">Privacy Policy</a> and 
+                        <a href="https://classchartsimprover.pages.dev/terms" target="_blank" style="color: ${PRIMARY_BLUE}; text-decoration: underline; font-weight: 600;">Terms & Conditions</a>.
+                    </p>
                 </div>
             </div>
 
-            <div id="cc-sync-status" style="padding: 12px; border-radius: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-size: 0.85rem; color: #374151;">
-                Checking connection…
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                <button id="cc-sync-connect-github" class="cc-notes-button cc-notes-save-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                    <img src="${getAssetUrl('feather/github.svg')}" alt="" style="width: 18px; height: 18px;">
-                    Connect with GitHub
-                </button>
-                <button id="cc-sync-connect-google" class="cc-notes-button cc-notes-save-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; background: #4285f4; border-color: #4285f4;">
-                    <img src="${getAssetUrl('feather/chrome.svg')}" alt="" style="width: 18px; height: 18px; filter: brightness(0) invert(1);">
-                    Connect with Google
-                </button>
+            <div id="cc-sync-status" style="padding: 12px; border-radius: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-size: 0.85rem; color: #374151; margin-bottom: 16px;">
+                Checking connection...
             </div>
 
             <div class="cc-settings-card">
-                <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px;">
-                    <div style="font-weight: 800; color: #111827;">Email sign-in</div>
-                    <div style="font-size: 0.75rem; color: #6b7280;">Email + password</div>
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 12px;">Quick Connect</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <button id="cc-sync-connect-github" class="cc-notes-button cc-notes-save-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px;">
+                        <img src="${getAssetUrl('feather/github.svg')}" alt="" style="width: 18px; height: 18px;">
+                        GitHub
+                    </button>
+                    <button id="cc-sync-connect-google" class="cc-notes-button cc-notes-save-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: #4285f4; border-color: #4285f4;">
+                        <img src="${getAssetUrl('feather/chrome.svg')}" alt="" style="width: 18px; height: 18px; filter: brightness(0) invert(1);">
+                        Google
+                    </button>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <input id="cc-sync-email" type="email" placeholder="Email" class="cc-add-goal-input" style="width: 100%;">
+            </div>
+
+            <div class="cc-settings-card">
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 12px;">Email Sign In</h4>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <input id="cc-sync-email" type="email" placeholder="Email address" class="cc-add-goal-input" style="width: 100%;">
                     <input id="cc-sync-password" type="password" placeholder="Password" class="cc-add-goal-input" style="width: 100%;">
-                    <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
-                        <button id="cc-sync-email-signin" class="cc-notes-button cc-notes-save-btn">Sign in</button>
-                        <button id="cc-sync-email-signup" class="cc-notes-button cc-goals-cancel-btn">Sign up</button>
+                    <div style="display: flex; gap: 8px;">
+                        <button id="cc-sync-email-signin" class="cc-notes-button cc-notes-save-btn" style="flex: 1;">Sign In</button>
+                        <button id="cc-sync-email-signup" class="cc-notes-button cc-goals-cancel-btn" style="flex: 1;">Sign Up</button>
                     </div>
-                    <div style="font-size: 0.75rem; color: #6b7280;">
-                        After you create your account, you must confirm your email before you can use cross-device sync.
+                    <div style="font-size: 0.75rem; color: #6b7280; background: #f8f9fa; padding: 8px; border-radius: 6px;">
+                        <strong>Note:</strong> After creating an account, you must confirm your email before using sync.
                     </div>
                 </div>
             </div>
 
-            <div class="cc-settings-card-soft" style="border-color:#e5e7eb;">
-                <div style="font-weight: 800; color: #111827; margin-bottom: 8px;">Choose what to sync</div>
-                <div style="display:flex; flex-direction:column; gap: 10px;">
-                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
-                        <span style="color:#374151; font-weight:600;">Personal Notes</span>
+            <div class="cc-settings-card-soft">
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 12px;">Sync Settings</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 8px 12px; border:1px solid #e5e7eb; border-radius:8px; background: white; cursor: pointer;">
+                        <span style="color:#374151; font-weight:500; font-size: 0.9rem;">Personal Notes</span>
                         <input type="checkbox" id="${SYNC_NOTES_ENABLED_KEY}" ${isSyncEnabled(SYNC_NOTES_ENABLED_KEY, true) ? 'checked' : ''}>
                     </label>
-                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
-                        <span style="color:#374151; font-weight:600;">Goals</span>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 8px 12px; border:1px solid #e5e7eb; border-radius:8px; background: white; cursor: pointer;">
+                        <span style="color:#374151; font-weight:500; font-size: 0.9rem;">Goals</span>
                         <input type="checkbox" id="${SYNC_GOALS_ENABLED_KEY}" ${isSyncEnabled(SYNC_GOALS_ENABLED_KEY, true) ? 'checked' : ''}>
                     </label>
-                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
-                        <span style="color:#374151; font-weight:600;">Profile photo</span>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 8px 12px; border:1px solid #e5e7eb; border-radius:8px; background: white; cursor: pointer;">
+                        <span style="color:#374151; font-weight:500; font-size: 0.9rem;">Profile Photo</span>
                         <input type="checkbox" id="${SYNC_PROFILE_PHOTO_ENABLED_KEY}" ${isSyncEnabled(SYNC_PROFILE_PHOTO_ENABLED_KEY, true) ? 'checked' : ''}>
                     </label>
-                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
-                        <span style="color:#374151; font-weight:600;">Custom +1 icon</span>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 8px 12px; border:1px solid #e5e7eb; border-radius:8px; background: white; cursor: pointer;">
+                        <span style="color:#374151; font-weight:500; font-size: 0.9rem;">Custom +1 Icon</span>
                         <input type="checkbox" id="${SYNC_CUSTOM_POSITIVE_ICON_ENABLED_KEY}" ${isSyncEnabled(SYNC_CUSTOM_POSITIVE_ICON_ENABLED_KEY, true) ? 'checked' : ''}>
                     </label>
-                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
-                        <span style="color:#374151; font-weight:600;">Accent colour</span>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 8px 12px; border:1px solid #e5e7eb; border-radius:8px; background: white; cursor: pointer;">
+                        <span style="color:#374151; font-weight:500; font-size: 0.9rem;">Accent Colour</span>
                         <input type="checkbox" id="${SYNC_ACCENT_COLOR_ENABLED_KEY}" ${isSyncEnabled(SYNC_ACCENT_COLOR_ENABLED_KEY, true) ? 'checked' : ''}>
                     </label>
-                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
-                        <span style="color:#374151; font-weight:600;">Homework due date + days</span>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 8px 12px; border:1px solid #e5e7eb; border-radius:8px; background: white; cursor: pointer;">
+                        <span style="color:#374151; font-weight:500; font-size: 0.9rem;">Homework Date Hint</span>
                         <input type="checkbox" id="${SYNC_HOMEWORK_DATE_HINT_ENABLED_KEY}" ${isSyncEnabled(SYNC_HOMEWORK_DATE_HINT_ENABLED_KEY, true) ? 'checked' : ''}>
                     </label>
-                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
-                        <span style="color:#374151; font-weight:600;">Homework tab redesign</span>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 8px 12px; border:1px solid #e5e7eb; border-radius:8px; background: white; cursor: pointer;">
+                        <span style="color:#374151; font-weight:500; font-size: 0.9rem;">Homework Redesign</span>
                         <input type="checkbox" id="${SYNC_HOMEWORK_REDESIGN_ENABLED_KEY}" ${isSyncEnabled(SYNC_HOMEWORK_REDESIGN_ENABLED_KEY, true) ? 'checked' : ''}>
                     </label>
-                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid #e5e7eb; border-radius:12px; background: white;">
-                        <span style="color:#374151; font-weight:600;">Dark mode</span>
+                    <label style="display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 8px 12px; border:1px solid #e5e7eb; border-radius:8px; background: white; cursor: pointer;">
+                        <span style="color:#374151; font-weight:500; font-size: 0.9rem;">Dark Mode</span>
                         <input type="checkbox" id="${SYNC_DARK_MODE_ENABLED_KEY}" ${isSyncEnabled(SYNC_DARK_MODE_ENABLED_KEY, true) ? 'checked' : ''}>
                     </label>
                 </div>
             </div>
 
-            <div class="cc-settings-actions" style="margin-top: 4px;">
-                <button id="cc-sync-pull" class="cc-notes-button cc-goals-cancel-btn">Pull</button>
-                <button id="cc-sync-push" class="cc-notes-button cc-notes-save-btn">Sync now</button>
+            <div class="cc-settings-actions" style="margin-top: 16px;">
+                <button id="cc-sync-pull" class="cc-notes-button cc-goals-cancel-btn">Pull Settings</button>
+                <button id="cc-sync-push" class="cc-notes-button cc-notes-save-btn">Sync Now</button>
                 <button id="cc-sync-disconnect" class="cc-notes-button cc-goals-cancel-btn" style="background: #fee2e2; border: 1px solid #ef4444; color: #991b1b;">Disconnect</button>
             </div>
         </div>
@@ -2112,22 +2117,60 @@ function showAboutModal() {
                 <p class="cc-settings-subtitle">This project enhances the ClassCharts student portal by adding helpful features. Your data is stored locally on this device by default, and can optionally sync via Supabase once you connect an account in Settings.</p>
             </div>
             <div class="cc-settings-card">
-                <h4 class="cc-settings-title">Privacy</h4>
+                <h4 class="cc-settings-title">Source Code</h4>
                 <p class="cc-settings-subtitle" style="color: #4b5563; margin-bottom: 14px;">
-                    View the full privacy policy for ClassCharts Improver.
+                    View the source code, report issues, or contribute to the project on GitHub.
                 </p>
-                <a href="https://classchartsimprover.pages.dev/privacy" target="_blank" style="
+                <a href="https://github.com/jamestheakston/classchartsimprover" target="_blank" style="
                     color: ${PRIMARY_BLUE};
                     font-weight: 800;
                     text-decoration: underline;
-                    display: inline-block;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
                     padding: 10px 12px;
                     border-radius: 10px;
                     border: 1px solid rgba(3,155,229,0.35);
                     background: rgba(3,155,229,0.06);
                 ">
-                    View Privacy Policy
+                    <img src="${getAssetUrl('feather/github.svg')}" alt="GitHub" style="width: 18px; height: 18px;">
+                    View on GitHub
                 </a>
+            </div>
+            <div class="cc-settings-card">
+                <h4 class="cc-settings-title">Legal</h4>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <a href="https://classchartsimprover.pages.dev/privacy" target="_blank" style="
+                        color: ${PRIMARY_BLUE};
+                        font-weight: 800;
+                        text-decoration: underline;
+                        display: inline-block;
+                        padding: 10px 12px;
+                        border-radius: 10px;
+                        border: 1px solid rgba(3,155,229,0.35);
+                        background: rgba(3,155,229,0.06);
+                        flex: 1;
+                        min-width: 140px;
+                        text-align: center;
+                    ">
+                        Privacy Policy
+                    </a>
+                    <a href="https://classchartsimprover.pages.dev/terms" target="_blank" style="
+                        color: ${PRIMARY_BLUE};
+                        font-weight: 800;
+                        text-decoration: underline;
+                        display: inline-block;
+                        padding: 10px 12px;
+                        border-radius: 10px;
+                        border: 1px solid rgba(3,155,229,0.35);
+                        background: rgba(3,155,229,0.06);
+                        flex: 1;
+                        min-width: 140px;
+                        text-align: center;
+                    ">
+                        Terms & Conditions
+                    </a>
+                </div>
             </div>
             <p style="font-size: 0.8rem; color: #9ca3af; margin: 0;">&copy; James Theakston 2026</p>
         </div>
@@ -2483,27 +2526,389 @@ function showAppearanceSettingsModal() {
 
 function showDeveloperInfoModal() {
     const isHomeworkHintEnabled = getHomeworkDateHintStatus();
+    const isLocalBuild = chrome.runtime.getManifest().update_url === undefined;
 
     const bodyHtml = `
-        <p style="font-size: 1rem; color: #333; line-height: 1.5; margin-bottom: 25px;">
-            This is the <strong>ClassCharts Improver Developer Information</strong> panel.
-            It provides diagnostic and version information for the extension.
-        </p>
-        <ul style="list-style-type: disc; padding-left: 20px; margin-bottom: 20px; color: #444;">
-            <li style="margin-bottom: 8px;"><strong>Version Key:</strong> ${CURRENT_VERSION_KEY}</li>
-            <li style="margin-bottom: 8px;"><strong>Plus One Icon:</strong> ${getPlusOneIcon()}</li>
-            <li style="margin-bottom: 8px;"><strong>Improved UI:</strong> ${getImprovedUIStatus() ? 'Enabled' : 'Disabled'}</li>
-            <li><strong>Homework Date Hint:</strong> ${isHomeworkHintEnabled ? 'Enabled' : 'Disabled'}</li> 
-        </ul>
-        <p style="font-size: 0.9rem; color: #555;">
-            <strong>Key Combo:</strong> The combination <strong>Ctrl + D</strong> (Cmd + D on Mac) is used to display this panel.
-        </p>
-        <div style="display: flex; justify-content: flex-end; margin-top: 30px;">
+        <div class="cc-settings-stack">
+            <div class="cc-settings-card-soft">
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 12px;">Developer Tools</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px;">
+                    <button id="cc-dev-console-btn" class="cc-notes-button cc-notes-save-btn" style="font-size: 0.85rem; padding: 8px 12px;">
+                        <span style="display: block; font-size: 1.2rem; margin-bottom: 4px;">Console</span>
+                        <span style="font-size: 0.75rem; opacity: 0.8;">JavaScript Console</span>
+                    </button>
+                    <button id="cc-dev-export-btn" class="cc-notes-button cc-notes-save-btn" style="font-size: 0.85rem; padding: 8px 12px;">
+                        <span style="display: block; font-size: 1.2rem; margin-bottom: 4px;">Export</span>
+                        <span style="font-size: 0.75rem; opacity: 0.8;">Export All Data</span>
+                    </button>
+                    <button id="cc-dev-reset-btn" class="cc-notes-button cc-goals-cancel-btn" style="font-size: 0.85rem; padding: 8px 12px;">
+                        <span style="display: block; font-size: 1.2rem; margin-bottom: 4px;">Reset</span>
+                        <span style="font-size: 0.75rem; opacity: 0.8;">Reset Features</span>
+                    </button>
+                    <button id="cc-dev-debug-btn" class="cc-notes-button cc-notes-save-btn" style="font-size: 0.85rem; padding: 8px 12px;">
+                        <span style="display: block; font-size: 1.2rem; margin-bottom: 4px;">Debug</span>
+                        <span style="font-size: 0.75rem; opacity: 0.8;">Debug Info</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="cc-settings-card">
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 12px;">Extension Information</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px;">
+                        <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 2px;">Version Key</div>
+                        <div style="font-weight: 600; color: #374151; font-family: monospace; font-size: 0.85rem;">${CURRENT_VERSION_KEY}</div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px;">
+                        <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 2px;">Build Type</div>
+                        <div style="font-weight: 600; color: #374151;">${isLocalBuild ? 'Local Development' : 'Chrome Web Store'}</div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px;">
+                        <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 2px;">Plus One Icon</div>
+                        <div style="font-weight: 600; color: #374151;">${getPlusOneIcon()}</div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px;">
+                        <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 2px;">Improved UI</div>
+                        <div style="font-weight: 600; color: #374151;">${getImprovedUIStatus() ? 'Enabled' : 'Disabled'}</div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px;">
+                        <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 2px;">Homework Hint</div>
+                        <div style="font-weight: 600; color: #374151;">${isHomeworkHintEnabled ? 'Enabled' : 'Disabled'}</div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px;">
+                        <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 2px;">Dark Mode</div>
+                        <div style="font-weight: 600; color: #374151;">${getDarkModeEnabled() ? 'Enabled' : 'Disabled'}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="cc-settings-card-soft">
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 8px;">Quick Actions</h4>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="cc-dev-refresh-btn" class="cc-notes-button cc-notes-save-btn" style="font-size: 0.8rem; padding: 6px 12px;">Refresh Extension</button>
+                    <button id="cc-dev-clear-btn" class="cc-notes-button cc-goals-cancel-btn" style="font-size: 0.8rem; padding: 6px 12px;">Clear Storage</button>
+                    <button id="cc-dev-reload-btn" class="cc-notes-button cc-notes-save-btn" style="font-size: 0.8rem; padding: 6px 12px;">Reload Page</button>
+                </div>
+            </div>
+            
+            <div class="cc-settings-card-soft">
+                <p style="font-size: 0.85rem; color: #6b7280; margin: 0;">
+                    <strong>Key Combo:</strong> <strong>Ctrl + D</strong> (Cmd + D on Mac) opens this panel
+                </p>
+            </div>
+        </div>
+        <div class="cc-settings-actions" style="margin-top: 16px;">
             <button id="cc-dev-info-close-btn" class="cc-notes-button cc-notes-save-btn">Close</button>
         </div>
     `;
-    const { closeModal } = createBaseModal('cc-dev-info', 'ClassCharts Improver: Developer Info', bodyHtml, '480px');
+    
+    const { closeModal } = createBaseModal('cc-dev-info', 'ClassCharts Improver: Developer Tools', bodyHtml, '600px');
+    
+    // Console Tool
+    document.getElementById('cc-dev-console-btn').addEventListener('click', () => {
+        showDeveloperConsole();
+    });
+    
+    // Export Tool
+    document.getElementById('cc-dev-export-btn').addEventListener('click', () => {
+        exportAllDeveloperData();
+    });
+    
+    // Reset Tool
+    document.getElementById('cc-dev-reset-btn').addEventListener('click', () => {
+        if (confirm('Are you sure you want to reset all feature settings to defaults? This cannot be undone.')) {
+            resetAllFeatures();
+            alert('All features have been reset to defaults.');
+        }
+    });
+    
+    // Debug Tool
+    document.getElementById('cc-dev-debug-btn').addEventListener('click', () => {
+        showDebugInformation();
+    });
+    
+    // Quick Actions
+    document.getElementById('cc-dev-refresh-btn').addEventListener('click', () => {
+        location.reload();
+    });
+    
+    document.getElementById('cc-dev-clear-btn').addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear all extension storage? This will remove all settings and data.')) {
+            chrome.storage.local.clear();
+            localStorage.clear();
+            alert('All storage cleared. Page will reload.');
+            location.reload();
+        }
+    });
+    
+    document.getElementById('cc-dev-reload-btn').addEventListener('click', () => {
+        location.reload();
+    });
+    
     document.getElementById('cc-dev-info-close-btn').addEventListener('click', closeModal);
+}
+
+function showDeveloperConsole() {
+    const bodyHtml = `
+        <div class="cc-settings-stack">
+            <div class="cc-settings-card">
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 12px;">JavaScript Console</h4>
+                <div style="margin-bottom: 12px;">
+                    <input type="text" id="cc-console-input" placeholder="Enter JavaScript code to execute..." style="
+                        width: 100%;
+                        padding: 10px;
+                        border: 1px solid #ddd;
+                        border-radius: 6px;
+                        font-family: monospace;
+                        font-size: 14px;
+                        box-sizing: border-box;
+                    ">
+                </div>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <button id="cc-console-execute" class="cc-notes-button cc-notes-save-btn">Execute</button>
+                    <button id="cc-console-clear" class="cc-notes-button cc-goals-cancel-btn">Clear</button>
+                </div>
+                <div id="cc-console-output" style="
+                    background: #1e1e1e;
+                    color: #d4d4d4;
+                    padding: 12px;
+                    border-radius: 6px;
+                    font-family: monospace;
+                    font-size: 12px;
+                    min-height: 200px;
+                    max-height: 300px;
+                    overflow-y: auto;
+                    white-space: pre-wrap;
+                    word-break: break-all;
+                ">// Console output will appear here
+// Try: document.title, window.location.href, or any JavaScript expression</div>
+            </div>
+            
+            <div class="cc-settings-card-soft">
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 8px;">Quick Commands</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px;">
+                    <button class="cc-console-quick" data-code="document.title">Get Page Title</button>
+                    <button class="cc-console-quick" data-code="window.location.href">Get Current URL</button>
+                    <button class="cc-console-quick" data-code="localStorage.length">Check Storage Size</button>
+                    <button class="cc-console-quick" data-code="Object.keys(localStorage)">List Storage Keys</button>
+                    <button class="cc-console-quick" data-code="chrome.runtime.getManifest()">Get Extension Info</button>
+                    <button class="cc-console-quick" data-code="performance.now()">Get Performance Time</button>
+                </div>
+            </div>
+        </div>
+        <div class="cc-settings-actions" style="margin-top: 16px;">
+            <button id="cc-console-close-btn" class="cc-notes-button cc-notes-save-btn">Close</button>
+        </div>
+    `;
+    
+    const { closeModal } = createBaseModal('cc-dev-console', 'Developer Console', bodyHtml, '600px');
+    const input = document.getElementById('cc-console-input');
+    const output = document.getElementById('cc-console-output');
+    const executeBtn = document.getElementById('cc-console-execute');
+    const clearBtn = document.getElementById('cc-console-clear');
+    
+    const executeCode = () => {
+        const code = input.value.trim();
+        if (!code) return;
+        
+        try {
+            const result = eval(code);
+            const resultStr = typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result);
+            output.textContent = `> ${code}\n${resultStr}\n\n${output.textContent}`;
+        } catch (error) {
+            output.textContent = `> ${code}\nError: ${error.message}\n\n${output.textContent}`;
+        }
+        input.value = '';
+        output.scrollTop = output.scrollHeight;
+    };
+    
+    executeBtn.addEventListener('click', executeCode);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            executeCode();
+        }
+    });
+    
+    clearBtn.addEventListener('click', () => {
+        output.textContent = '// Console cleared\n';
+    });
+    
+    // Quick command buttons
+    document.querySelectorAll('.cc-console-quick').forEach(btn => {
+        btn.addEventListener('click', () => {
+            input.value = btn.dataset.code;
+            executeCode();
+        });
+    });
+    
+    document.getElementById('cc-console-close-btn').addEventListener('click', closeModal);
+}
+
+function exportAllDeveloperData() {
+    const data = {
+        timestamp: new Date().toISOString(),
+        extension: {
+            version: chrome.runtime.getManifest().version,
+            name: chrome.runtime.getManifest().name,
+            buildType: chrome.runtime.getManifest().update_url === undefined ? 'local' : 'production'
+        },
+        localStorage: {},
+        chromeStorage: {},
+        features: {},
+        pageInfo: {
+            url: window.location.href,
+            title: document.title,
+            userAgent: navigator.userAgent
+        }
+    };
+    
+    // Collect localStorage data
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        data.localStorage[key] = localStorage.getItem(key);
+    }
+    
+    // Collect chrome storage data
+    chrome.storage.local.get(null, (result) => {
+        data.chromeStorage = result;
+        
+        // Collect feature states
+        const featureKeys = [
+            'classcharts_improver_feature_improved_ui_enabled',
+            'classcharts_improver_feature_personal_notes_enabled',
+            'classcharts_improver_feature_goals_enabled',
+            'classcharts_improver_feature_profile_photo_enabled',
+            'classcharts_improver_feature_accent_color_enabled',
+            'classcharts_improver_feature_report_concern_enabled',
+            'classcharts_improver_feature_contact_link_enabled',
+            'classcharts_improver_feature_code_warning_enabled',
+            'classcharts_improver_feature_messages_placeholder_enabled',
+            'classcharts_improver_feature_announcements_description_enabled',
+            'classcharts_improver_feature_refresh_tweaks_enabled',
+            'classcharts_improver_feature_detention_celebration_enabled',
+            'classcharts_improver_feature_login_alert_enabled',
+            'classcharts_improver_feature_prompt_review_enabled',
+            'classcharts_improver_feature_cloud_sync_enabled',
+            'classcharts_improver_feature_developer_preview_alert_enabled',
+            'classcharts_improver_feature_show_safety_badges_enabled'
+        ];
+        
+        featureKeys.forEach(key => {
+            data.features[key] = localStorage.getItem(key) === 'true';
+        });
+        
+        // Download the data
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `classcharts-improver-debug-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+}
+
+function resetAllFeatures() {
+    const featureDefaults = {
+        'classcharts_improver_feature_improved_ui_enabled': 'true',
+        'classcharts_improver_feature_personal_notes_enabled': 'true',
+        'classcharts_improver_feature_goals_enabled': 'true',
+        'classcharts_improver_feature_profile_photo_enabled': 'true',
+        'classcharts_improver_feature_accent_color_enabled': 'true',
+        'classcharts_improver_feature_report_concern_enabled': 'true',
+        'classcharts_improver_feature_contact_link_enabled': 'true',
+        'classcharts_improver_feature_code_warning_enabled': 'true',
+        'classcharts_improver_feature_messages_placeholder_enabled': 'true',
+        'classcharts_improver_feature_announcements_description_enabled': 'true',
+        'classcharts_improver_feature_refresh_tweaks_enabled': 'true',
+        'classcharts_improver_feature_detention_celebration_enabled': 'true',
+        'classcharts_improver_feature_login_alert_enabled': 'true',
+        'classcharts_improver_feature_prompt_review_enabled': 'true',
+        'classcharts_improver_feature_cloud_sync_enabled': 'true',
+        'classcharts_improver_feature_developer_preview_alert_enabled': 'true',
+        'classcharts_improver_feature_show_safety_badges_enabled': 'true'
+    };
+    
+    Object.entries(featureDefaults).forEach(([key, value]) => {
+        localStorage.setItem(key, value);
+    });
+}
+
+function showDebugInformation() {
+    const debugInfo = {
+        extension: {
+            name: chrome.runtime.getManifest().name,
+            version: chrome.runtime.getManifest().version,
+            manifestVersion: chrome.runtime.getManifest().manifest_version
+        },
+        page: {
+            url: window.location.href,
+            title: document.title,
+            domain: window.location.hostname,
+            path: window.location.pathname
+        },
+        browser: {
+            userAgent: navigator.userAgent,
+            language: navigator.language,
+            platform: navigator.platform,
+            cookieEnabled: navigator.cookieEnabled
+        },
+        storage: {
+            localStorageSize: localStorage.length,
+            chromeStorageKeys: Object.keys(chrome.storage.local ? {} : {}),
+            sessionStorageSize: sessionStorage.length
+        },
+        performance: {
+            loadTime: performance.timing.loadEventEnd - performance.timing.navigationStart,
+            domReady: performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart,
+            now: performance.now()
+        },
+        classcharts: {
+            isLoggedIn: !!document.querySelector('.logout-button'),
+            hasNavigation: !!document.querySelector('.MuiToolbar-root'),
+            hasHomework: !!document.querySelector('.homework-card'),
+            hasBehavior: !!document.querySelector('.behaviour-points-section')
+        }
+    };
+    
+    const bodyHtml = `
+        <div class="cc-settings-stack">
+            <div class="cc-settings-card">
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 12px;">Debug Information</h4>
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; max-height: 400px; overflow-y: auto;">
+                    <pre style="margin: 0; font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all;">${JSON.stringify(debugInfo, null, 2)}</pre>
+                </div>
+            </div>
+            
+            <div class="cc-settings-card-soft">
+                <button id="cc-debug-copy" class="cc-notes-button cc-notes-save-btn">Copy to Clipboard</button>
+                <button id="cc-debug-download" class="cc-notes-button cc-notes-save-btn">Download Debug Info</button>
+            </div>
+        </div>
+        <div class="cc-settings-actions" style="margin-top: 16px;">
+            <button id="cc-debug-close-btn" class="cc-notes-button cc-notes-save-btn">Close</button>
+        </div>
+    `;
+    
+    const { closeModal } = createBaseModal('cc-debug-info', 'Debug Information', bodyHtml, '600px');
+    
+    document.getElementById('cc-debug-copy').addEventListener('click', () => {
+        navigator.clipboard.writeText(JSON.stringify(debugInfo, null, 2));
+        alert('Debug information copied to clipboard!');
+    });
+    
+    document.getElementById('cc-debug-download').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(debugInfo, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `classcharts-debug-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+    
+    document.getElementById('cc-debug-close-btn').addEventListener('click', closeModal);
 }
 
 function setupKeyComboListener() {
