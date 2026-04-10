@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_4';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_1';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -11,8 +11,6 @@ const PLUS_ONE_ICON_KEY = 'classcharts_improver_plus_one_icon';
 const HOMEWORK_DATE_HINT_KEY = 'classcharts_improver_homework_date_hint_enabled';
 const HOMEWORK_REDESIGN_KEY = 'classcharts_improver_homework_redesign_enabled';
 const ACCENT_COLOR_KEY = 'classcharts_improver_accent_color';
-
-// Feature toggles (all behind checkboxes in Settings → Feature Controls)
 const FEATURE_IMPROVED_UI_ENABLED_KEY = IMPROVED_UI_KEY;
 const FEATURE_CUSTOM_POSITIVE_ICON_ENABLED_KEY = 'classcharts_improver_feature_custom_positive_icon_enabled';
 const FEATURE_NOTES_ENABLED_KEY = 'classcharts_improver_feature_personal_notes_enabled';
@@ -33,8 +31,6 @@ const FEATURE_CLOUD_SYNC_ENABLED_KEY = 'classcharts_improver_feature_cloud_sync_
 const FEATURE_DEVELOPER_PREVIEW_ALERT_ENABLED_KEY = 'classcharts_improver_feature_developer_preview_alert_enabled';
 
 const DARK_MODE_ENABLED_KEY = 'classcharts_improver_dark_mode_enabled';
-
-// Choose what to sync (cross-device). If disabled, we don't overwrite local/cloud values.
 const SYNC_IMPROVED_UI_ENABLED_KEY = 'classcharts_improver_sync_improved_ui_enabled';
 const SYNC_NOTES_ENABLED_KEY = 'classcharts_improver_sync_notes_enabled';
 const SYNC_GOALS_ENABLED_KEY = 'classcharts_improver_sync_goals_enabled';
@@ -564,7 +560,7 @@ const getAssetUrl = (filename) => {
 function replaceClassChartsLogo() {
     const mainLogo = document.querySelector('img[src*="CC_logo.png"], img[alt="Logo"]');
     if (mainLogo) {
-        mainLogo.src = getAssetUrl('customlogo.png');
+        mainLogo.src = getAssetUrl('feather/customlogo.png');
         mainLogo.alt = 'ClassCharts Improver Logo';
     }
 }
@@ -814,7 +810,7 @@ function applyHomeworkRedesign() {
                 border-radius: 8px !important;
                 margin-top: 8px !important;
                 transition: all 0.2s !important;
-                color: #1d4ed8 !important;
+                color: #1d4fd8 !important;
                 text-decoration: underline !important;
                 pointer-events: auto !important;
                 position: relative !important;
@@ -858,13 +854,13 @@ function applyHomeworkRedesign() {
         
         const calendarIconContainer = document.querySelector('.calendar-header .MuiButton-label');
         if (calendarIconContainer && !calendarIconContainer.querySelector('.cc-feather-icon')) {
-            calendarIconContainer.innerHTML = `<img src="${getAssetUrl('calendar.svg')}" class="cc-feather-icon" style="width:20px; height:20px; filter:brightness(0) invert(1);">`;
+            calendarIconContainer.innerHTML = `<img src="${getAssetUrl('feather/calendar.svg')}" class="cc-feather-icon" style="width:20px; height:20px; filter:brightness(0) invert(1);">`;
         }
 
         const expandButtons = document.querySelectorAll('.expand-button .MuiIconButton-label');
         expandButtons.forEach(btn => {
             if (!btn.querySelector('.cc-feather-icon')) {
-                btn.innerHTML = `<img src="${getAssetUrl('chevron-down.svg')}" class="cc-feather-icon" style="width:24px; height:24px; opacity:0.6;">`;
+                btn.innerHTML = `<img src="${getAssetUrl('feather/chevron-down.svg')}" class="cc-feather-icon" style="width:24px; height:24px; opacity:0.6;">`;
             }
         });
     } else {
@@ -1704,11 +1700,11 @@ function showAccountSyncModal() {
 
             <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
                 <button id="cc-sync-connect-github" class="cc-notes-button cc-notes-save-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                    <img src="${getAssetUrl('github.svg')}" alt="" style="width: 18px; height: 18px;">
+                    <img src="${getAssetUrl('feather/github.svg')}" alt="" style="width: 18px; height: 18px;">
                     Connect with GitHub
                 </button>
                 <button id="cc-sync-connect-google" class="cc-notes-button cc-notes-save-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; background: #4285f4; border-color: #4285f4;">
-                    <img src="${getAssetUrl('chrome.svg')}" alt="" style="width: 18px; height: 18px; filter: brightness(0) invert(1);">
+                    <img src="${getAssetUrl('feather/chrome.svg')}" alt="" style="width: 18px; height: 18px; filter: brightness(0) invert(1);">
                     Connect with Google
                 </button>
             </div>
@@ -1896,7 +1892,7 @@ function showNotesModal() {
     const warningHtml = showCloudWarning ? `
         <div class="cc-settings-card-soft" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; margin-bottom: 14px; padding: 14px;">
             <div style="display:flex; gap:12px; align-items:flex-start;">
-                <img src="${getAssetUrl('shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
+                <img src="${getAssetUrl('feather/shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
                 <div>
                     <div style="font-weight:800; color:#9a3412; margin-bottom:4px;">Not encrypted</div>
                     <div style="font-size:0.88rem; color:#7c2d12; line-height:1.35; margin-bottom: 8px;">
@@ -1981,7 +1977,7 @@ function showGoalsModal() {
     const warningHtml = showCloudWarning ? `
         <div class="cc-settings-card-soft" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; margin-bottom: 14px; padding: 14px;">
             <div style="display:flex; gap:12px; align-items:flex-start;">
-                <img src="${getAssetUrl('shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
+                <img src="${getAssetUrl('feather/shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
                 <div>
                     <div style="font-weight:800; color:#9a3412; margin-bottom:4px;">Not encrypted</div>
                     <div style="font-size:0.88rem; color:#7c2d12; line-height:1.35; margin-bottom: 8px;">
@@ -2151,7 +2147,7 @@ function showProfilePhotoModal() {
     const warningHtml = showCloudWarning ? `
         <div class="cc-settings-card-soft" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; margin-bottom: 14px; padding: 14px;">
             <div style="display:flex; gap:12px; align-items:flex-start;">
-                <img src="${getAssetUrl('shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
+                <img src="${getAssetUrl('feather/shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
                 <div>
                     <div style="font-weight:800; color:#9a3412; margin-bottom:4px;">Not encrypted</div>
                     <div style="font-size:0.88rem; color:#7c2d12; line-height:1.35; margin-bottom: 8px;">
@@ -2274,6 +2270,8 @@ function showProfilePhotoModal() {
         const containerWidth = 300;
         const containerHeight = 300;
         const img = cropImage;
+        
+        if (!img || !img.naturalWidth || !img.naturalHeight) return;
         
         const scaledWidth = img.naturalWidth * cropScale;
         const scaledHeight = img.naturalHeight * cropScale;
@@ -2399,12 +2397,12 @@ function showAppearanceSettingsModal() {
                     </label>
                     <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background-color: ${currentIcon === 'smile.svg' ? LIGHT_GREY : 'white'};">
                         <input type="radio" name="plusOneIcon" value="smile.svg" style="margin-right: 15px; transform: scale(1.2);" ${currentIcon === 'smile.svg' ? 'checked' : ''}>
-                        <img src="${getAssetUrl('smile.svg')}" alt="Smile Icon" style="width: 20px; height: 20px; margin-right: 10px;">
+                        <img src="${getAssetUrl('feather/smile.svg')}" alt="Smile Icon" style="width: 20px; height: 20px; margin-right: 10px;">
                         <span style="font-weight: 500;">Smile Icon (Recommended)</span>
                     </label>
                     <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background-color: ${currentIcon === 'award.svg' ? LIGHT_GREY : 'white'};">
                         <input type="radio" name="plusOneIcon" value="award.svg" style="margin-right: 15px; transform: scale(1.2);" ${currentIcon === 'award.svg' ? 'checked' : ''}>
-                        <img src="${getAssetUrl('award.svg')}" alt="Award Icon" style="width: 20px; height: 20px; margin-right: 10px;">
+                        <img src="${getAssetUrl('feather/award.svg')}" alt="Award Icon" style="width: 20px; height: 20px; margin-right: 10px;">
                         <span style="font-weight: 500;">Award Icon</span>
                     </label>
                 </div>
@@ -2675,7 +2673,7 @@ function injectHomeworkDateHint() {
 }
 
 function showWelcomeModal(callback) {
-    const logoUrl = getAssetUrl('customlogo.png');
+    const logoUrl = getAssetUrl('feather/customlogo.png');
     const welcomeHtml = `
         <style>
             .cc-welcome-card {
@@ -2782,7 +2780,7 @@ function showWelcomeModal(callback) {
 }
 
 function showReviewModal() {
-    const logoUrl = getAssetUrl('customlogo.png');
+    const logoUrl = getAssetUrl('feather/customlogo.png');
     const reviewLink = 'https://chromewebstore.google.com/detail/classcharts-improver/kalmdpfngeebamgaeegkieojhbkbghoe';
 
     const reviewHtml = `
@@ -2924,7 +2922,7 @@ function injectReportConcernWarning() {
     const injectedClass = 'cc-improver-concern-warning';
 
     if (header && !reportConcernPage.querySelector('.' + injectedClass)) {
-        const iconUrl = getAssetUrl('alert-triangle.svg');
+        const iconUrl = getAssetUrl('feather/alert-triangle.svg');
         const warningHtml = `
             <div class="${injectedClass}" style="
                 background-color: #fffbeb;
@@ -3299,7 +3297,7 @@ if (isFeatureEnabledByKey(FEATURE_LOGIN_ALERT_ENABLED_KEY, true)) {
     document.querySelectorAll('.cc-improver-login-alert').forEach(el => el.remove());
 }
 
-// Developer preview alert always shows for local builds (unless permanently dismissed)
+
 injectDeveloperPreviewAlert();
 
 setupKeyComboListener();
