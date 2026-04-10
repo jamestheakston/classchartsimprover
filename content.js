@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_3';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_4';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -556,6 +556,147 @@ const getAssetUrl = (filename) => {
     }
     return filename;
 };
+
+// James Auth Integration Constants
+const JAMES_AUTH_USER_KEY = 'classcharts_improver_james_auth_user';
+const JAMES_AUTH_STATUS_KEY = 'classcharts_improver_james_auth_status';
+
+// James Auth Integration Functions
+function openJamesAuthWindow() {
+    const authUrl = 'https://jamesauth.pages.dev/auth?app=ccimprover&scopes=email,profile,storedatacloud';
+    const width = 500;
+    const height = 600;
+    const left = (screen.width / 2) - (width / 2);
+    const top = (screen.height / 2) - (height / 2);
+    
+    const authWindow = window.open(
+        authUrl,
+        'jamesAuth',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+    );
+    
+    // Handle window closed without authentication
+    const checkClosed = setInterval(() => {
+        if (authWindow.closed) {
+            clearInterval(checkClosed);
+            // Check if authentication actually succeeded
+            getJamesAuthUser().then(user => {
+                if (!user || !user.isAuthenticated) {
+                    const statusEl = document.getElementById('cc-sync-status');
+                    if (statusEl) {
+                        statusEl.textContent = 'Authentication cancelled or window closed. Please try again.';
+                        statusEl.style.background = '#fef2f2';
+                        statusEl.style.borderColor = '#ef4444';
+                        statusEl.style.color = '#991b1b';
+                    }
+                }
+            });
+        }
+    }, 1000);
+    
+    return authWindow;
+}
+
+function setupJamesAuthListener() {
+    window.addEventListener('message', (event) => {
+        // Security validation
+        if (event.origin !== 'https://jamesauth.pages.dev') {
+            console.warn('James Auth: Invalid origin', event.origin);
+            return;
+        }
+        
+        if (!event.data || event.data.type !== 'JAMES_AUTH_SUCCESS') {
+            console.warn('James Auth: Invalid message type', event.data?.type);
+            return;
+        }
+        
+        const { user, service } = event.data;
+        
+        // Validate required fields
+        if (!user || !user.id || !user.email || !user.name) {
+            console.error('James Auth: Invalid user data', user);
+            return;
+        }
+        
+        // Store authentication data
+        const authData = {
+            isAuthenticated: true,
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                avatar: user.avatar || null
+            },
+            service: service || 'ClassCharts Improver',
+            authenticatedAt: new Date().toISOString()
+        };
+        
+        chrome.storage.local.set({
+            [JAMES_AUTH_USER_KEY]: authData,
+            [JAMES_AUTH_STATUS_KEY]: 'authenticated'
+        }, () => {
+            console.log('James Auth: Authentication successful', authData);
+            
+            // Update UI if account sync modal is open
+            updateAccountSyncUI(authData);
+            
+            // Schedule cloud sync if enabled
+            if (isCloudSyncEnabled()) {
+                scheduleCloudSync();
+            }
+        });
+    });
+}
+
+function getJamesAuthUser() {
+    return new Promise((resolve) => {
+        chrome.storage.local.get([JAMES_AUTH_USER_KEY], (result) => {
+            resolve(result[JAMES_AUTH_USER_KEY] || null);
+        });
+    });
+}
+
+function isJamesAuthenticated() {
+    return new Promise((resolve) => {
+        chrome.storage.local.get([JAMES_AUTH_USER_KEY], (result) => {
+            const authData = result[JAMES_AUTH_USER_KEY];
+            resolve(authData && authData.isAuthenticated === true);
+        });
+    });
+}
+
+function signOutJamesAuth() {
+    chrome.storage.local.remove([JAMES_AUTH_USER_KEY, JAMES_AUTH_STATUS_KEY], () => {
+        console.log('James Auth: Signed out successfully');
+        updateAccountSyncUI(null);
+    });
+}
+
+function updateAccountSyncUI(authData) {
+    // Update the account sync modal if it's open
+    const statusEl = document.getElementById('cc-sync-status');
+    if (statusEl) {
+        if (authData && authData.isAuthenticated) {
+            statusEl.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <img src="${authData.user.avatar || getAssetUrl('user.svg')}" alt="User" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">
+                    <div>
+                        <div style="font-weight: 600; color: #065f46;">Connected as ${authData.user.name}</div>
+                        <div style="font-size: 0.8rem; color: #6b7280;">${authData.user.email}</div>
+                    </div>
+                </div>
+            `;
+            statusEl.style.background = '#ecfdf5';
+            statusEl.style.borderColor = '#10b981';
+            statusEl.style.color = '#065f46';
+        } else {
+            statusEl.textContent = 'Not connected';
+            statusEl.style.background = '#f9fafb';
+            statusEl.style.borderColor = '#e5e7eb';
+            statusEl.style.color = '#374151';
+        }
+    }
+}
 
 function replaceClassChartsLogo() {
     const mainLogo = document.querySelector('img[src*="CC_logo.png"], img[alt="Logo"]');
@@ -1699,13 +1840,26 @@ function showAccountSyncModal() {
                 </div>
             </div>
 
+            <div id="cc-james-auth-info" class="cc-settings-card-soft" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #0ea5e9;">
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                    <img src="${getAssetUrl('info.svg')}" alt="Info" style="width: 20px; height: 20px; margin-top: 2px; filter: invert(42%) sepia(100%) saturate(2000%) hue-rotate(200deg) brightness(0.8);">
+                    <div>
+                        <h5 style="margin: 0 0 6px 0; color: #075985; font-size: 0.95rem; font-weight: 600;">James Auth - Recommended Platform</h5>
+                        <p style="margin: 0; color: #0c4a6e; font-size: 0.85rem; line-height: 1.4;">
+                            The recommended platform to connect to all my apps. From ClassCharts Improver to LiteStack, manage your entire workspace with a single identity. No more remembering different passwords for each service.
+                        </p>
+                        <a href="https://jamesauth.pages.dev" target="_blank" style="color: #0284c7; font-size: 0.8rem; text-decoration: underline; font-weight: 500;">Learn more about James Auth →</a>
+                    </div>
+                </div>
+            </div>
+
             <div id="cc-sync-status" style="padding: 12px; border-radius: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-size: 0.85rem; color: #374151; margin-bottom: 16px;">
                 Checking connection...
             </div>
 
-            <div class="cc-settings-card">
+            <div id="cc-quick-connect-section" class="cc-settings-card">
                 <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 12px;">Quick Connect</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
                     <button id="cc-sync-connect-github" class="cc-notes-button cc-notes-save-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px;">
                         <img src="${getAssetUrl('github.svg')}" alt="" style="width: 18px; height: 18px;">
                         GitHub
@@ -1714,10 +1868,14 @@ function showAccountSyncModal() {
                         <img src="${getAssetUrl('chrome.svg')}" alt="" style="width: 18px; height: 18px; filter: brightness(0) invert(1);">
                         Google
                     </button>
+                    <button id="cc-sync-connect-james" class="cc-notes-button cc-notes-save-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: #7c3aed; border-color: #7c3aed;">
+                        <img src="${getAssetUrl('user.svg')}" alt="" style="width: 18px; height: 18px; filter: brightness(0) invert(1);">
+                        James Auth
+                    </button>
                 </div>
             </div>
 
-            <div class="cc-settings-card">
+            <div id="cc-email-signin-section" class="cc-settings-card">
                 <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 12px;">Email Sign In</h4>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     <input id="cc-sync-email" type="email" placeholder="Email address" class="cc-add-goal-input" style="width: 100%;">
@@ -1729,6 +1887,18 @@ function showAccountSyncModal() {
                     <div style="font-size: 0.75rem; color: #6b7280; background: #f8f9fa; padding: 8px; border-radius: 6px;">
                         <strong>Note:</strong> After creating an account, you must confirm your email before using sync.
                     </div>
+                </div>
+            </div>
+
+            <div id="cc-james-auth-section" class="cc-settings-card" style="display: none;">
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 12px;">James Auth Account</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <button id="cc-james-manage-account" class="cc-notes-button cc-notes-save-btn" style="background: #f3f4f6; border-color: #9333ea;">
+                        Manage Account
+                    </button>
+                    <button id="cc-james-logout" class="cc-notes-button cc-goals-cancel-btn" style="background: #fee2e2; border-color: #ef4444; color: #991b1b;">
+                        Sign Out
+                    </button>
                 </div>
             </div>
 
@@ -1796,12 +1966,40 @@ function showAccountSyncModal() {
     };
 
     const refreshStatus = async () => {
+        // Check James Auth first
+        const jamesAuthUser = await getJamesAuthUser();
+        const quickConnectSection = document.getElementById('cc-quick-connect-section');
+        const emailSignInSection = document.getElementById('cc-email-signin-section');
+        const jamesAuthSection = document.getElementById('cc-james-auth-section');
+        const jamesAuthInfo = document.getElementById('cc-james-auth-info');
+        
+        if (jamesAuthUser && jamesAuthUser.isAuthenticated) {
+            updateAccountSyncUI(jamesAuthUser);
+            
+            // Hide quick connect, email sections, and James Auth info box, show James Auth section
+            if (quickConnectSection) quickConnectSection.style.display = 'none';
+            if (emailSignInSection) emailSignInSection.style.display = 'none';
+            if (jamesAuthInfo) jamesAuthInfo.style.display = 'none';
+            if (jamesAuthSection) jamesAuthSection.style.display = 'block';
+            return;
+        }
+        
+        // Show quick connect, email sections, and James Auth info box, hide James Auth section
+        if (quickConnectSection) quickConnectSection.style.display = 'block';
+        if (emailSignInSection) emailSignInSection.style.display = 'block';
+        if (jamesAuthInfo) jamesAuthInfo.style.display = 'block';
+        if (jamesAuthSection) jamesAuthSection.style.display = 'none';
+        
+        // Check Supabase session
         const session = await getCloudSession();
         if (session?.user?.email) setStatus(`Connected as ${session.user.email}. Cloud sync is enabled.`, 'ok');
         else setStatus('Not connected. Your settings are stored locally on this device.', 'warn');
     };
 
     refreshStatus();
+    
+    // Setup James Auth listener when modal opens
+    setupJamesAuthListener();
 
     const syncKeys = [
         SYNC_NOTES_ENABLED_KEY,
@@ -1833,15 +2031,19 @@ function showAccountSyncModal() {
         closeModal();
     });
 
-    document.getElementById('cc-sync-connect-google').addEventListener('click', async () => {
-        setStatus('Opening Google sign-in…', 'info');
-        const resp = await bgMessage({ type: 'SUPABASE_SIGN_IN_GOOGLE' });
-        if (resp?.error) return setStatus(resp.error, 'err');
-        await pullSettingsFromCloud().catch(() => {});
-        await upsertSettingsToCloud().catch(() => {});
-        startAutoCloudSync();
+    document.getElementById('cc-sync-connect-james').addEventListener('click', () => {
+        setStatus('Opening James Auth...', 'info');
+        openJamesAuthWindow();
+    });
+
+    document.getElementById('cc-james-manage-account').addEventListener('click', () => {
+        window.open('https://jamesauth.pages.dev/dashboard', '_blank');
+    });
+
+    document.getElementById('cc-james-logout').addEventListener('click', async () => {
+        setStatus('Signing out...', 'info');
+        signOutJamesAuth();
         await refreshStatus();
-        closeModal();
     });
 
     document.getElementById('cc-sync-email-signin').addEventListener('click', async () => {
@@ -1884,7 +2086,17 @@ function showAccountSyncModal() {
     });
 
     document.getElementById('cc-sync-disconnect').addEventListener('click', async () => {
-        setStatus('Disconnecting…', 'info');
+        setStatus('Disconnecting...', 'info');
+        
+        // Check if James Auth is connected and sign out
+        const jamesAuthUser = await getJamesAuthUser();
+        if (jamesAuthUser && jamesAuthUser.isAuthenticated) {
+            signOutJamesAuth();
+            setStatus('Disconnected. Your settings will remain stored locally on this device.', 'warn');
+            return;
+        }
+        
+        // Otherwise sign out from Supabase
         const resp = await bgMessage({ type: 'SUPABASE_SIGN_OUT' });
         if (resp?.error) return setStatus(resp.error, 'err');
         setStatus('Disconnected. Your settings will remain stored locally on this device.', 'warn');
@@ -3704,6 +3916,9 @@ if (isFeatureEnabledByKey(FEATURE_LOGIN_ALERT_ENABLED_KEY, true)) {
 
 
 injectDeveloperPreviewAlert();
+
+// Setup James Auth listener for global message handling
+setupJamesAuthListener();
 
 setupKeyComboListener();
 initObserver();
