@@ -34,7 +34,7 @@ To maintain consistency across the project, please follow these requirements whe
 * **Language:** Use **HTML** for structure and layouts wherever possible.
 * **Styling:** Use **Tailwind CSS** for styling components.
 * **Icons:** Use **Feather Icons** only. Do not use Tailwind Icons or other icon libraries.
-* **Privacy:** All data processing must remain **client-side**. Do not write code that transmits user data (profile pictures, goals, or notes) to external servers.
+* **Privacy:** All data processing must remain **client-side**. Do not write code that transmits user data (profile pictures, goals, or notes) to external servers, unless you are transmiting data to the official database.
 
 ---
 
