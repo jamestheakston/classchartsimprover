@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "ClassCharts Improver",
   "description": "Adds features to ClassCharts.",
-  "version": "5.7.4",
-  "background": {
+  "version": "5.7.5",
+    "background": {
     "service_worker": "service-worker.js"
   },
   "action": {},
@@ -31,6 +31,13 @@
         "assets/feather/*",
         "assets/*.html",
         "assets/*.js"
+      ],
+      "matches": ["https://www.classcharts.com/*"]
+    },
+    {
+      "resources": [
+        "https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist-cdn/styles/themes/default.min.css",
+        "https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist/webawesome.loader.min.js"
       ],
       "matches": ["https://www.classcharts.com/*"]
     }
