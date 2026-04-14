@@ -124,6 +124,69 @@ async function signInWithOAuthGithub() {
   return session;
 }
 
+async function signInWithJamesAuth(jamesAuthId, email) {
+  // Generate a simple password for James Auth user
+  const jamesAuthPassword = `james_auth_${jamesAuthId}`;
+  
+  try {
+    // First try to sign in
+    const signInResp = await supabaseFetch(`/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      body: JSON.stringify({
+        email: email,
+        password: jamesAuthPassword
+      }),
+    });
+    
+    if (signInResp.ok) {
+      const signInData = await signInResp.json();
+      await setSession(signInData);
+      return { session: signInData };
+    }
+    
+    // If sign in fails, create new account
+    const signUpResp = await supabaseFetch(`/auth/v1/signup`, {
+      method: 'POST',
+      body: JSON.stringify({
+        email: email,
+        password: jamesAuthPassword
+      }),
+    });
+    
+    if (!signUpResp.ok) {
+      const text = await signUpResp.text();
+      throw new Error(`James Auth account creation failed: ${signUpResp.status} ${text}`);
+    }
+    
+    const signUpData = await signUpResp.json();
+    if (signUpData?.access_token) {
+      await setSession(signUpData);
+      return { session: signUpData };
+    }
+    
+    // Try sign in after account creation
+    const retrySignInResp = await supabaseFetch(`/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      body: JSON.stringify({
+        email: email,
+        password: jamesAuthPassword
+      }),
+    });
+    
+    if (!retrySignInResp.ok) {
+      const text = await retrySignInResp.text();
+      throw new Error(`James Auth sign in failed: ${retrySignInResp.status} ${text}`);
+    }
+    
+    const retrySignInData = await retrySignInResp.json();
+    await setSession(retrySignInData);
+    return { session: retrySignInData };
+    
+  } catch (error) {
+    throw new Error(`James Auth integration failed: ${error.message}`);
+  }
+}
+
 async function signInWithOAuthGoogle() {
   const redirectTo = chrome.identity.getRedirectURL('supabase');
   const codeVerifier = randomString(64);
@@ -253,6 +316,39 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sendResponse({ session: await signInWithOAuthGoogle() });
         return;
       }
+      case 'SUPABASE_SIGN_IN_JAMES_AUTH': {
+        const { jamesAuthId, email } = message;
+        if (!jamesAuthId || !email) {
+          throw new Error('James Auth ID and email required');
+        }
+        
+        const result = await signInWithJamesAuth(jamesAuthId, email);
+        
+        // Store JAMES_AUTH_ID in user_settings table after successful authentication
+        if (result.session?.access_token) {
+          try {
+            await supabaseFetch(`/rest/v1/user_settings`, {
+              method: 'POST',
+              headers: {
+                apikey: 'sb_publishable_a7GOW5zpj5YQp-nXJ6KyQA_NGkNyWFh',
+                Authorization: `Bearer ${result.session.access_token}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+              },
+              body: JSON.stringify({
+                user_id: result.session.user.id,
+                james_auth_id: jamesAuthId,
+                updated_at: new Date().toISOString()
+              })
+            });
+          } catch (error) {
+            console.warn('Failed to store JAMES_AUTH_ID:', error);
+          }
+        }
+        
+        sendResponse(result);
+        return;
+      }
       case 'SUPABASE_RESET_PASSWORD': {
         const redirectTo = chrome.identity.getRedirectURL('supabase');
         const resp = await supabaseFetch(`/auth/v1/recover`, {
@@ -273,12 +369,26 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       }
       case 'SUPABASE_DELETE_ACCOUNT': {
         const session = await getSession();
-        if (!session?.access_token) throw new Error('Not authenticated');
+        
+        // Try to get James Auth data if no Supabase session
+        let jamesAuthData = null;
+        if (!session?.access_token) {
+            const storageRes = await storageGet('classcharts_improver_james_auth_user');
+            jamesAuthData = storageRes.classcharts_improver_james_auth_user;
+        }
+        
+        // Check if authenticated via James Auth or has Supabase session
+        if (!session?.access_token && (!jamesAuthData || !jamesAuthData.isAuthenticated)) {
+            throw new Error('Not authenticated');
+        }
+        
+        // Use James Auth token if available, otherwise use Supabase session
+        const authToken = jamesAuthData?.token || session.access_token;
         
         const resp = await supabaseFetch(`/auth/v1/user`, {
           method: 'DELETE',
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${authToken}`,
           },
         });
         if (!resp.ok) {
@@ -293,9 +403,69 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sendResponse({ session: await signInWithPassword(message.email, message.password) });
         return;
       }
-      case 'SUPABASE_SIGN_UP_PASSWORD': {
-        sendResponse({ result: await signUpWithPassword(message.email, message.password) });
-        return;
+      case 'SUPABASE_SIGN_IN_WITH_TOKEN': {
+        const session = await getSession();
+        if (session?.access_token) {
+          // Already signed in, return current session
+          sendResponse({ session });
+          return;
+        }
+        
+        if (!message.email) {
+          throw new Error('No email provided for authentication');
+        }
+        
+        // For James Auth integration, use password reset approach for existing users
+        const jamesAuthPassword = `james_auth_${message.email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        
+        try {
+          // First try to sign in with our standard password
+          const signInResp = await supabaseFetch(`/auth/v1/token?grant_type=password`, {
+            method: 'POST',
+            body: JSON.stringify({
+              email: message.email,
+              password: jamesAuthPassword
+            }),
+          });
+          
+          if (signInResp.ok) {
+            // Sign in successful
+            const signInData = await signInResp.json();
+            await setSession(signInData);
+            sendResponse({ session: signInData });
+            return;
+          }
+          
+          // If sign in fails, user might exist with different password
+          const signInErrorText = await signInResp.text();
+          const signInError = JSON.parse(signInErrorText);
+          
+          if (signInError?.error_code === 'invalid_credentials') {
+            // Send password reset email to user
+            const resetResp = await supabaseFetch(`/auth/v1/recover`, {
+              method: 'POST',
+              body: JSON.stringify({
+                email: message.email,
+                gotrue_meta_security: {
+                  redirect_to: chrome.identity.getRedirectURL('supabase')
+                }
+              }),
+            });
+            
+            if (resetResp.ok) {
+              throw new Error(`James Auth account exists but password mismatch. A password reset email has been sent. Please check your email and try again.`);
+            } else {
+              const resetErrorText = await resetResp.text();
+              throw new Error(`James Auth account exists but password mismatch. Failed to send reset email: ${resetResp.status} ${resetErrorText}`);
+            }
+          }
+          
+          const signInErrorTextRaw = await signInResp.text();
+          throw new Error(`James Auth sign in failed: ${signInResp.status} ${signInErrorTextRaw}`);
+          
+        } catch (error) {
+          throw new Error(`James Auth integration failed: ${error.message}`);
+        }
       }
       case 'SUPABASE_SEND_MAGIC_LINK': {
         sendResponse(await sendMagicLink(message.email));
