@@ -183,6 +183,544 @@ function bgMessage(message) {
     });
 }
 
+// Error Modal System
+let activeErrorModal = null;
+
+function showErrorModal(title, error, details = null) {
+    // Remove existing modal
+    if (activeErrorModal) {
+        activeErrorModal.remove();
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'cc-error-modal';
+    modal.innerHTML = `
+        <div class="cc-error-modal-backdrop"></div>
+        <div class="cc-error-modal-content">
+            <div class="cc-error-modal-header">
+                <h3>${title}</h3>
+                <button class="cc-error-modal-close" onclick="this.closest('.cc-error-modal').remove()">×</button>
+            </div>
+            <div class="cc-error-modal-body">
+                <div class="cc-error-message">${error}</div>
+                ${details ? `<div class="cc-error-details">${details}</div>` : ''}
+                <div class="cc-error-actions">
+                    <button class="cc-error-copy-btn" onclick="copyErrorToClipboard('${escapeHtml(error + (details ? '\\n\\n' + details : ''))}', this)">
+                        <span class="cc-error-copy-text">Copy error</span>
+                        <span class="cc-error-copy-tick">✓</span>
+                    </button>
+                    <button class="cc-error-dismiss-btn" onclick="this.closest('.cc-error-modal').remove()">Dismiss</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add styles if not already added
+    if (!document.getElementById('cc-error-modal-styles')) {
+        const style = document.createElement('style');
+        style.id = 'cc-error-modal-styles';
+        style.textContent = `
+            .cc-error-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 1000001;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
+            
+            .cc-error-modal-backdrop {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(4px);
+            }
+            
+            .cc-error-modal-content {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: var(--cc-improver-modal-bg, white);
+                border-radius: 12px;
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                max-width: 500px;
+                width: 90%;
+                max-height: 80vh;
+                overflow: hidden;
+                animation: cc-error-modal-in 0.3s ease-out;
+            }
+            
+            .cc-error-modal-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 20px 24px;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+                background: var(--cc-improver-modal-header-bg, #f7f7f7);
+            }
+            
+            .cc-error-modal-header h3 {
+                margin: 0;
+                font-size: 18px;
+                font-weight: 600;
+                color: var(--cc-improver-modal-fg, #111827);
+            }
+            
+            .cc-error-modal-close {
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: var(--cc-improver-modal-fg, #6b7280);
+                padding: 0;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 6px;
+                transition: all 0.2s;
+            }
+            
+            .cc-error-modal-close:hover {
+                background: rgba(0, 0, 0, 0.1);
+                color: var(--cc-improver-modal-fg, #111827);
+            }
+            
+            .cc-error-modal-body {
+                padding: 24px;
+                color: var(--cc-improver-modal-fg, #111827);
+            }
+            
+            .cc-error-message {
+                font-size: 16px;
+                line-height: 1.5;
+                margin-bottom: 16px;
+                font-weight: 500;
+            }
+            
+            .cc-error-details {
+                background: rgba(0, 0, 0, 0.05);
+                border-radius: 8px;
+                padding: 12px;
+                font-size: 14px;
+                line-height: 1.4;
+                margin-bottom: 20px;
+                font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                white-space: pre-wrap;
+                word-break: break-word;
+            }
+            
+            .cc-error-actions {
+                display: flex;
+                gap: 12px;
+                justify-content: flex-end;
+            }
+            
+            .cc-error-copy-btn, .cc-error-dismiss-btn {
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                border: 1px solid;
+                transition: all 0.2s;
+                position: relative;
+            }
+            
+            .cc-error-copy-btn {
+                background: #3b82f6;
+                color: white;
+                border-color: #3b82f6;
+            }
+            
+            .cc-error-copy-btn:hover {
+                background: #2563eb;
+                border-color: #2563eb;
+            }
+            
+            .cc-error-dismiss-btn {
+                background: transparent;
+                color: var(--cc-improver-modal-fg, #6b7280);
+                border-color: rgba(0, 0, 0, 0.2);
+            }
+            
+            .cc-error-dismiss-btn:hover {
+                background: rgba(0, 0, 0, 0.05);
+                border-color: rgba(0, 0, 0, 0.3);
+            }
+            
+            .cc-error-copy-tick {
+                display: none;
+            }
+            
+            .cc-error-copy-btn.copied .cc-error-copy-text {
+                display: none;
+            }
+            
+            .cc-error-copy-btn.copied .cc-error-copy-tick {
+                display: inline;
+            }
+            
+            @keyframes cc-error-modal-in {
+                from {
+                    opacity: 0;
+                    transform: translate(-50%, -50%) scale(0.9);
+                }
+                to {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1);
+                }
+            }
+            
+            .cc-improver-dark-mode .cc-error-details {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(modal);
+    activeErrorModal = modal;
+    
+    // Close on backdrop click
+    modal.querySelector('.cc-error-modal-backdrop').addEventListener('click', () => {
+        modal.remove();
+        activeErrorModal = null;
+    });
+    
+    return modal;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function copyErrorToClipboard(text, button) {
+    navigator.clipboard.writeText(text).then(() => {
+        button.classList.add('copied');
+        setTimeout(() => {
+            button.classList.remove('copied');
+        }, 2000);
+    }).catch(() => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        button.classList.add('copied');
+        setTimeout(() => {
+            button.classList.remove('copied');
+        }, 2000);
+    });
+}
+
+// Toast Notification System
+let activeToasts = [];
+
+function showToast(message, type = 'info', duration = 3000) {
+    const toast = document.createElement('div');
+    toast.className = `cc-toast cc-toast-${type}`;
+    toast.type = type; // Store type for reference
+    toast.innerHTML = `
+        <div class="cc-toast-content">
+            <span class="cc-toast-message">${message}</span>
+            <button class="cc-toast-close" onclick="this.closest('.cc-toast').remove()">×</button>
+        </div>
+    `;
+    
+    // Add styles if not already added
+    if (!document.getElementById('cc-toast-styles')) {
+        const style = document.createElement('style');
+        style.id = 'cc-toast-styles';
+        style.textContent = `
+            .cc-toast {
+                position: fixed;
+                right: 20px;
+                z-index: 999999;
+                min-width: 300px;
+                max-width: 400px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                animation: slideIn 0.3s ease-out;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                font-size: 14px;
+                line-height: 1.4;
+            }
+            
+            .cc-toast-info {
+                background: #f0f9ff;
+                border: 1px solid #0ea5e9;
+                color: #0c4a6e;
+            }
+            
+            .cc-toast-success {
+                background: #ecfdf5;
+                border: 1px solid #10b981;
+                color: #065f46;
+            }
+            
+            .cc-toast-error {
+                background: #fef2f2;
+                border: 1px solid #ef4444;
+                color: #991b1b;
+            }
+            
+            .cc-toast-warning {
+                background: #fffbeb;
+                border: 1px solid #f59e0b;
+                color: #92400e;
+            }
+            
+            .cc-toast-content {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 16px;
+                gap: 12px;
+            }
+            
+            .cc-toast-message {
+                flex: 1;
+                font-weight: 500;
+            }
+            
+            .cc-toast-close {
+                background: none;
+                border: none;
+                font-size: 18px;
+                cursor: pointer;
+                opacity: 0.6;
+                padding: 0;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 3px;
+                transition: opacity 0.2s;
+            }
+            
+            .cc-toast-close:hover {
+                opacity: 1;
+                background: rgba(0,0,0,0.1);
+            }
+            
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+            
+            @keyframes fadeInTick {
+                from {
+                    opacity: 0;
+                    transform: scale(0.8);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+            
+            .cc-toast.removing {
+                animation: slideOut 0.3s ease-in forwards;
+            }
+            
+            .cc-toast-success-tick {
+                display: inline-block;
+                margin-left: 8px;
+                color: #10b981;
+                font-weight: bold;
+                animation: fadeInTick 0.3s ease-out;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(toast);
+    activeToasts.push(toast);
+    
+    // Position toast above existing toasts
+    updateToastPositions();
+    
+    // Show tick for success messages after a short delay
+    if (type === 'success') {
+        setTimeout(() => {
+            if (toast.parentElement && !toast.classList.contains('removing')) {
+                const messageElement = toast.querySelector('.cc-toast-message');
+                if (messageElement && !messageElement.querySelector('.cc-toast-success-tick')) {
+                    const tick = document.createElement('span');
+                    tick.className = 'cc-toast-success-tick';
+                    tick.textContent = '✓';
+                    messageElement.appendChild(tick);
+                }
+            }
+        }, 500);
+    }
+    
+    // Auto-remove after duration
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.classList.add('removing');
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                    activeToasts = activeToasts.filter(t => t !== toast);
+                    updateToastPositions(); // Reposition remaining toasts
+                }
+            }, 300);
+        }
+    }, duration);
+    
+    return toast;
+}
+
+function updateToastPositions() {
+    const baseTop = 20;
+    const toastHeight = 60; // Approximate height including margin
+    const gap = 10;
+    
+    activeToasts.forEach((toast, index) => {
+        if (toast.parentElement) {
+            toast.style.top = `${baseTop + (index * (toastHeight + gap))}px`;
+        }
+    });
+}
+
+// Authentication in-progress modal
+let authInProgressModal = null;
+
+function showAuthInProgressModal(provider) {
+    // Remove existing modal
+    if (authInProgressModal) {
+        authInProgressModal.remove();
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'cc-auth-in-progress-modal';
+    modal.innerHTML = `
+        <div class="cc-auth-in-progress-content">
+            <div class="cc-auth-spinner"></div>
+            <h3>Authenticating with ${provider}</h3>
+            <p>An authentication window has opened. Continue the authentication process there.</p>
+            <p class="cc-auth-note">This window will close automatically when authentication is complete.</p>
+        </div>
+    `;
+    
+    // Add styles if not already added
+    if (!document.getElementById('cc-auth-modal-styles')) {
+        const style = document.createElement('style');
+        style.id = 'cc-auth-modal-styles';
+        style.textContent = `
+            .cc-auth-in-progress-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000000;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
+            
+            .cc-auth-in-progress-content {
+                background: white;
+                border-radius: 12px;
+                padding: 32px;
+                text-align: center;
+                max-width: 400px;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            }
+            
+            .cc-auth-spinner {
+                width: 40px;
+                height: 40px;
+                border: 3px solid #e5e7eb;
+                border-top: 3px solid #3b82f6;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 16px;
+            }
+            
+            .cc-auth-in-progress-content h3 {
+                margin: 0 0 16px 0;
+                color: #1f2937;
+                font-size: 18px;
+                font-weight: 600;
+            }
+            
+            .cc-auth-in-progress-content p {
+                margin: 8px 0;
+                color: #6b7280;
+                font-size: 14px;
+                line-height: 1.5;
+            }
+            
+            .cc-auth-note {
+                font-size: 13px;
+                color: #9ca3af;
+                font-style: italic;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(modal);
+    authInProgressModal = modal;
+    
+    // Auto-close after 2 minutes (timeout)
+    setTimeout(() => {
+        if (authInProgressModal) {
+            authInProgressModal.remove();
+            authInProgressModal = null;
+        }
+    }, 120000);
+    
+    return modal;
+}
+
+function hideAuthInProgressModal() {
+    if (authInProgressModal) {
+        authInProgressModal.remove();
+        authInProgressModal = null;
+    }
+}
+
 async function getCloudSession() {
     const resp = await bgMessage({ type: 'SUPABASE_GET_SESSION' });
     return resp?.session || null;
@@ -582,13 +1120,7 @@ function openJamesAuthWindow() {
             // Check if authentication actually succeeded
             getJamesAuthUser().then(user => {
                 if (!user || !user.isAuthenticated) {
-                    const statusEl = document.getElementById('cc-sync-status');
-                    if (statusEl) {
-                        statusEl.textContent = 'Authentication cancelled or window closed. Please try again.';
-                        statusEl.style.background = '#fef2f2';
-                        statusEl.style.borderColor = '#ef4444';
-                        statusEl.style.color = '#991b1b';
-                    }
+                    showErrorModal('Authentication Failed', 'Authentication cancelled or window closed. Please try again.');
                 }
             });
         }
@@ -612,6 +1144,10 @@ function setupJamesAuthListener() {
         
         const { user, service } = event.data;
         
+        // Debug: Log the full event data to understand structure
+        console.log('James Auth: Full response data:', event.data);
+        console.log('James Auth: User object:', user);
+        
         // Validate required fields
         if (!user || !user.id || !user.email || !user.name) {
             console.error('James Auth: Invalid user data', user);
@@ -627,6 +1163,7 @@ function setupJamesAuthListener() {
                 name: user.name,
                 avatar: user.avatar || null
             },
+            token: user.token || event.data.token || `james_auth_${user.id}_${Date.now()}`,
             service: service || 'ClassCharts Improver',
             authenticatedAt: new Date().toISOString()
         };
@@ -634,16 +1171,37 @@ function setupJamesAuthListener() {
         chrome.storage.local.set({
             [JAMES_AUTH_USER_KEY]: authData,
             [JAMES_AUTH_STATUS_KEY]: 'authenticated'
-        }, () => {
+        }, async () => {
             console.log('James Auth: Authentication successful', authData);
+            
+            // Hide the in-progress modal
+            hideAuthInProgressModal();
+            
+            // Create Supabase session using James Auth ID and email for real cloud sync
+            try {
+                const resp = await bgMessage({ 
+                    type: 'SUPABASE_SIGN_IN_JAMES_AUTH', 
+                    jamesAuthId: authData.user.id,
+                    email: authData.user.email
+                });
+                if (resp?.error) {
+                    console.warn('James Auth: Failed to create Supabase session:', resp.error);
+                    showErrorModal('Cloud Sync Error', resp.error);
+                } else {
+                    console.log('James Auth: Supabase session created successfully');
+                    showToast('Successfully connected to cloud sync!', 'success');
+                    await pullSettingsFromCloud().catch(() => {});
+                    await upsertSettingsToCloud().catch(() => {});
+                    startAutoCloudSync();
+                    // Modal will be closed by the account sync modal logic
+                }
+            } catch (error) {
+                console.warn('James Auth: Error creating Supabase session:', error);
+                showErrorModal('Cloud Sync Error', 'Failed to connect to cloud sync', error.message);
+            }
             
             // Update UI if account sync modal is open
             updateAccountSyncUI(authData);
-            
-            // Schedule cloud sync if enabled
-            if (isCloudSyncEnabled()) {
-                scheduleCloudSync();
-            }
         });
     });
 }
@@ -666,35 +1224,27 @@ function isJamesAuthenticated() {
 }
 
 function signOutJamesAuth() {
-    chrome.storage.local.remove([JAMES_AUTH_USER_KEY, JAMES_AUTH_STATUS_KEY], () => {
+    chrome.storage.local.remove([JAMES_AUTH_USER_KEY, JAMES_AUTH_STATUS_KEY], async () => {
         console.log('James Auth: Signed out successfully');
+        
+        // Also clear Supabase session
+        try {
+            await bgMessage({ type: 'SUPABASE_SIGN_OUT' });
+        } catch (error) {
+            console.warn('Failed to clear Supabase session:', error);
+        }
+        
         updateAccountSyncUI(null);
     });
 }
 
 function updateAccountSyncUI(authData) {
     // Update the account sync modal if it's open
-    const statusEl = document.getElementById('cc-sync-status');
-    if (statusEl) {
-        if (authData && authData.isAuthenticated) {
-            statusEl.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <img src="${authData.user.avatar || getAssetUrl('user.svg')}" alt="User" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">
-                    <div>
-                        <div style="font-weight: 600; color: #065f46;">Connected as ${authData.user.name}</div>
-                        <div style="font-size: 0.8rem; color: #6b7280;">${authData.user.email}</div>
-                    </div>
-                </div>
-            `;
-            statusEl.style.background = '#ecfdf5';
-            statusEl.style.borderColor = '#10b981';
-            statusEl.style.color = '#065f46';
-        } else {
-            statusEl.textContent = 'Not connected';
-            statusEl.style.background = '#f9fafb';
-            statusEl.style.borderColor = '#e5e7eb';
-            statusEl.style.color = '#374151';
-        }
+    // Since we're now using toast notifications, this function mainly handles UI state changes
+    // The actual status updates are now handled by toast notifications
+    if (authData && authData.isAuthenticated) {
+        // Could update modal UI here if needed, but status is now handled by toasts
+        console.log('James Auth UI updated for authenticated user:', authData.user.name);
     }
 }
 
@@ -1853,10 +2403,7 @@ function showAccountSyncModal() {
                 </div>
             </div>
 
-            <div id="cc-sync-status" style="padding: 12px; border-radius: 12px; border: 1px solid #e5e7eb; background: #f9fafb; font-size: 0.85rem; color: #374151; margin-bottom: 16px;">
-                Checking connection...
-            </div>
-
+            
             <div id="cc-quick-connect-section" class="cc-settings-card">
                 <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 12px;">Quick Connect</h4>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
@@ -1950,19 +2497,14 @@ function showAccountSyncModal() {
 
     const { closeModal } = createBaseModal('cc-account-sync', 'Account & Sync', bodyHtml, '520px');
 
-    const statusEl = document.getElementById('cc-sync-status');
-    const setStatus = (text, kind = 'info') => {
-        const colors = {
-            info: { bg: '#f9fafb', border: '#e5e7eb', color: '#374151' },
-            ok: { bg: '#ecfdf5', border: '#10b981', color: '#065f46' },
-            warn: { bg: '#fffbeb', border: '#f59e0b', color: '#92400e' },
-            err: { bg: '#fef2f2', border: '#ef4444', color: '#991b1b' },
-        };
-        const c = colors[kind] || colors.info;
-        statusEl.textContent = text;
-        statusEl.style.background = c.bg;
-        statusEl.style.borderColor = c.border;
-        statusEl.style.color = c.color;
+    // Convert status types to toast types
+    const statusToToastType = (kind) => {
+        switch (kind) {
+            case 'ok': return 'success';
+            case 'err': return 'error';
+            case 'warn': return 'warning';
+            default: return 'info';
+        }
     };
 
     const refreshStatus = async () => {
@@ -1992,8 +2534,8 @@ function showAccountSyncModal() {
         
         // Check Supabase session
         const session = await getCloudSession();
-        if (session?.user?.email) setStatus(`Connected as ${session.user.email}. Cloud sync is enabled.`, 'ok');
-        else setStatus('Not connected. Your settings are stored locally on this device.', 'warn');
+        if (session?.user?.email) showToast(`Connected as ${session.user.email}. Cloud sync is enabled.`, 'success');
+        else showToast('Not connected. Your settings are stored locally on this device.', 'warning');
     };
 
     refreshStatus();
@@ -2021,9 +2563,22 @@ function showAccountSyncModal() {
     });
 
     document.getElementById('cc-sync-connect-github').addEventListener('click', async () => {
-        setStatus('Opening GitHub sign-in…', 'info');
+        showAuthInProgressModal('GitHub');
         const resp = await bgMessage({ type: 'SUPABASE_SIGN_IN_GITHUB' });
-        if (resp?.error) return setStatus(resp.error, 'err');
+        hideAuthInProgressModal();
+        if (resp?.error) return showErrorModal('GitHub Authentication Failed', resp.error);
+        await pullSettingsFromCloud().catch(() => {});
+        await upsertSettingsToCloud().catch(() => {});
+        startAutoCloudSync();
+        await refreshStatus();
+        closeModal();
+    });
+
+    document.getElementById('cc-sync-connect-google').addEventListener('click', async () => {
+        showAuthInProgressModal('Google');
+        const resp = await bgMessage({ type: 'SUPABASE_SIGN_IN_GOOGLE' });
+        hideAuthInProgressModal();
+        if (resp?.error) return showErrorModal('Google Authentication Failed', resp.error);
         await pullSettingsFromCloud().catch(() => {});
         await upsertSettingsToCloud().catch(() => {});
         startAutoCloudSync();
@@ -2032,7 +2587,7 @@ function showAccountSyncModal() {
     });
 
     document.getElementById('cc-sync-connect-james').addEventListener('click', () => {
-        setStatus('Opening James Auth...', 'info');
+        showAuthInProgressModal('James Auth');
         openJamesAuthWindow();
     });
 
@@ -2041,7 +2596,7 @@ function showAccountSyncModal() {
     });
 
     document.getElementById('cc-james-logout').addEventListener('click', async () => {
-        setStatus('Signing out...', 'info');
+        showToast('Signing out...', 'info');
         signOutJamesAuth();
         await refreshStatus();
     });
@@ -2049,10 +2604,10 @@ function showAccountSyncModal() {
     document.getElementById('cc-sync-email-signin').addEventListener('click', async () => {
         const email = document.getElementById('cc-sync-email').value.trim();
         const password = document.getElementById('cc-sync-password').value;
-        if (!email || !password) return setStatus('Enter an email and password.', 'warn');
-        setStatus('Signing in…', 'info');
+        if (!email || !password) return showToast('Enter an email and password.', 'warning');
+        showToast('Signing in…', 'info');
         const resp = await bgMessage({ type: 'SUPABASE_SIGN_IN_PASSWORD', email, password });
-        if (resp?.error) return setStatus(resp.error, 'err');
+        if (resp?.error) return showErrorModal('Sign In Failed', resp.error);
         await pullSettingsFromCloud().catch(() => {});
         await upsertSettingsToCloud().catch(() => {});
         startAutoCloudSync();
@@ -2063,43 +2618,43 @@ function showAccountSyncModal() {
     document.getElementById('cc-sync-email-signup').addEventListener('click', async () => {
         const email = document.getElementById('cc-sync-email').value.trim();
         const password = document.getElementById('cc-sync-password').value;
-        if (!email || !password) return setStatus('Enter an email and password.', 'warn');
-        setStatus('Creating account…', 'info');
+        if (!email || !password) return showToast('Enter an email and password.', 'warning');
+        showToast('Creating account…', 'info');
         const resp = await bgMessage({ type: 'SUPABASE_SIGN_UP_PASSWORD', email, password });
-        if (resp?.error) return setStatus(resp.error, 'err');
-        setStatus('Account created. If email confirmation is enabled, confirm your email then sign in.', 'ok');
+        if (resp?.error) return showErrorModal('Account Creation Failed', resp.error);
+        showToast('Account created. If email confirmation is enabled, confirm your email then sign in.', 'success');
         await refreshStatus();
     });
 
     document.getElementById('cc-sync-push').addEventListener('click', async () => {
-        setStatus('Syncing to cloud…', 'info');
+        showToast('Syncing to cloud…', 'info');
         const r = await upsertSettingsToCloud();
-        if (!r.ok) return setStatus(`Sync failed (${r.reason || 'unknown'}).`, 'err');
-        setStatus('Synced to cloud.', 'ok');
+        if (!r.ok) return showErrorModal('Sync Failed', `Sync failed (${r.reason || 'unknown'}).`, r.details);
+        showToast('Synced to cloud.', 'success');
     });
 
     document.getElementById('cc-sync-pull').addEventListener('click', async () => {
-        setStatus('Pulling from cloud…', 'info');
+        showToast('Pulling from cloud…', 'info');
         const r = await pullSettingsFromCloud();
-        if (!r.ok) return setStatus(`Pull failed (${r.reason || 'unknown'}).`, 'err');
-        setStatus('Pulled from cloud.', 'ok');
+        if (!r.ok) return showErrorModal('Pull Failed', `Pull failed (${r.reason || 'unknown'}).`, r.details);
+        showToast('Pulled from cloud.', 'success');
     });
 
     document.getElementById('cc-sync-disconnect').addEventListener('click', async () => {
-        setStatus('Disconnecting...', 'info');
+        showToast('Disconnecting...', 'info');
         
         // Check if James Auth is connected and sign out
         const jamesAuthUser = await getJamesAuthUser();
         if (jamesAuthUser && jamesAuthUser.isAuthenticated) {
             signOutJamesAuth();
-            setStatus('Disconnected. Your settings will remain stored locally on this device.', 'warn');
+            showToast('Disconnected. Your settings will remain stored locally on this device.', 'warning');
             return;
         }
         
         // Otherwise sign out from Supabase
         const resp = await bgMessage({ type: 'SUPABASE_SIGN_OUT' });
-        if (resp?.error) return setStatus(resp.error, 'err');
-        setStatus('Disconnected. Your settings will remain stored locally on this device.', 'warn');
+        if (resp?.error) return showErrorModal('Sign Out Failed', resp.error);
+        showToast('Disconnected. Your settings will remain stored locally on this device.', 'warning');
     });
 }
 
