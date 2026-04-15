@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_4';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_6';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -29,6 +29,7 @@ const FEATURE_PROMPT_REVIEW_ENABLED_KEY = 'classcharts_improver_feature_prompt_r
 const FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY = 'classcharts_improver_feature_show_safety_badges_enabled';
 const FEATURE_CLOUD_SYNC_ENABLED_KEY = 'classcharts_improver_feature_cloud_sync_enabled';
 const FEATURE_DEVELOPER_PREVIEW_ALERT_ENABLED_KEY = 'classcharts_improver_feature_developer_preview_alert_enabled';
+const FEATURE_HIDE_ENCRYPTION_WARNING_KEY = 'classcharts_improver_feature_hide_encryption_warning_enabled';
 
 const DARK_MODE_ENABLED_KEY = 'classcharts_improver_dark_mode_enabled';
 const SYNC_IMPROVED_UI_ENABLED_KEY = 'classcharts_improver_sync_improved_ui_enabled';
@@ -41,6 +42,7 @@ const SYNC_HOMEWORK_DATE_HINT_ENABLED_KEY = 'classcharts_improver_sync_homework_
 const SYNC_HOMEWORK_REDESIGN_ENABLED_KEY = 'classcharts_improver_sync_homework_redesign_enabled';
 const SYNC_DARK_MODE_ENABLED_KEY = 'classcharts_improver_sync_dark_mode_enabled';
 const SYNC_PROMPT_REVIEW_ENABLED_KEY = 'classcharts_improver_sync_prompt_review_enabled';
+const SYNC_HIDE_ENCRYPTION_WARNING_ENABLED_KEY = 'classcharts_improver_sync_hide_encryption_warning_enabled';
 
 function getStoredBoolean(key, defaultValue) {
     const raw = localStorage.getItem(key);
@@ -425,95 +427,128 @@ function copyErrorToClipboard(text, button) {
     });
 }
 
-// Toast Notification System
-let activeToasts = [];
-
-function showToast(message, type = 'info', duration = 3000) {
-    const toast = document.createElement('div');
-    toast.className = `cc-toast cc-toast-${type}`;
-    toast.type = type; // Store type for reference
-    toast.innerHTML = `
-        <div class="cc-toast-content">
-            <span class="cc-toast-message">${message}</span>
-            <button class="cc-toast-close" onclick="this.closest('.cc-toast').remove()">×</button>
+// Info Modal System (replaces toast notifications)
+function showInfoModal(title, message, type = 'info', duration = 3000) {
+    // Remove existing info modal
+    const existingModal = document.querySelector('.cc-info-modal-overlay');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'cc-info-modal-overlay';
+    
+    // Icon mapping for different types
+    const icons = {
+        info: getAssetUrl('info.svg'),
+        success: getAssetUrl('check-circle.svg'),
+        warning: getAssetUrl('alert-octagon.svg'),
+        error: getAssetUrl('x-circle.svg')
+    };
+    
+    // Color mapping for different types
+    const colors = {
+        info: '#0ea5e9',
+        success: '#10b981',
+        warning: '#f59e0b',
+        error: '#ef4444'
+    };
+    
+    modal.innerHTML = `
+        <div class="cc-info-modal">
+            <div class="cc-info-modal-content">
+                <div class="cc-info-modal-icon" style="color: ${colors[type]}">
+                    <img src="${icons[type]}" alt="${type}" style="width: 24px; height: 24px;">
+                </div>
+                <div class="cc-info-modal-text">
+                    <div class="cc-info-modal-title">${title}</div>
+                    <div class="cc-info-modal-message">${message}</div>
+                </div>
+                <button class="cc-info-modal-close" onclick="this.closest('.cc-info-modal-overlay').remove()">×</button>
+            </div>
         </div>
     `;
     
     // Add styles if not already added
-    if (!document.getElementById('cc-toast-styles')) {
+    if (!document.getElementById('cc-info-modal-styles')) {
         const style = document.createElement('style');
-        style.id = 'cc-toast-styles';
+        style.id = 'cc-info-modal-styles';
         style.textContent = `
-            .cc-toast {
+            .cc-info-modal-overlay {
                 position: fixed;
+                top: 20px;
                 right: 20px;
                 z-index: 999999;
-                min-width: 300px;
                 max-width: 400px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                animation: slideIn 0.3s ease-out;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                font-size: 14px;
-                line-height: 1.4;
+                animation: slideIn 0.3s ease-out;
             }
             
-            .cc-toast-info {
-                background: #f0f9ff;
-                border: 1px solid #0ea5e9;
-                color: #0c4a6e;
+            .cc-info-modal {
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                overflow: hidden;
             }
             
-            .cc-toast-success {
-                background: #ecfdf5;
-                border: 1px solid #10b981;
-                color: #065f46;
-            }
-            
-            .cc-toast-error {
-                background: #fef2f2;
-                border: 1px solid #ef4444;
-                color: #991b1b;
-            }
-            
-            .cc-toast-warning {
-                background: #fffbeb;
-                border: 1px solid #f59e0b;
-                color: #92400e;
-            }
-            
-            .cc-toast-content {
+            .cc-info-modal-content {
                 display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 12px 16px;
+                align-items: flex-start;
+                padding: 16px;
                 gap: 12px;
             }
             
-            .cc-toast-message {
-                flex: 1;
-                font-weight: 500;
+            .cc-info-modal-icon {
+                flex-shrink: 0;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 8px;
+                background: rgba(0, 0, 0, 0.05);
             }
             
-            .cc-toast-close {
+            .cc-info-modal-text {
+                flex: 1;
+                min-width: 0;
+            }
+            
+            .cc-info-modal-title {
+                font-weight: 600;
+                color: #111827;
+                font-size: 14px;
+                margin-bottom: 4px;
+                line-height: 1.3;
+            }
+            
+            .cc-info-modal-message {
+                color: #6b7280;
+                font-size: 13px;
+                line-height: 1.4;
+            }
+            
+            .cc-info-modal-close {
+                flex-shrink: 0;
                 background: none;
                 border: none;
                 font-size: 18px;
                 cursor: pointer;
-                opacity: 0.6;
+                color: #6b7280;
                 padding: 0;
-                width: 20px;
-                height: 20px;
+                width: 24px;
+                height: 24px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                border-radius: 3px;
-                transition: opacity 0.2s;
+                border-radius: 4px;
+                transition: all 0.2s;
             }
             
-            .cc-toast-close:hover {
-                opacity: 1;
-                background: rgba(0,0,0,0.1);
+            .cc-info-modal-close:hover {
+                background: rgba(0, 0, 0, 0.05);
+                color: #374151;
             }
             
             @keyframes slideIn {
@@ -538,81 +573,158 @@ function showToast(message, type = 'info', duration = 3000) {
                 }
             }
             
-            @keyframes fadeInTick {
-                from {
-                    opacity: 0;
-                    transform: scale(0.8);
-                }
-                to {
-                    opacity: 1;
-                    transform: scale(1);
-                }
-            }
-            
-            .cc-toast.removing {
+            .cc-info-modal-overlay.removing {
                 animation: slideOut 0.3s ease-in forwards;
-            }
-            
-            .cc-toast-success-tick {
-                display: inline-block;
-                margin-left: 8px;
-                color: #10b981;
-                font-weight: bold;
-                animation: fadeInTick 0.3s ease-out;
             }
         `;
         document.head.appendChild(style);
     }
     
-    document.body.appendChild(toast);
-    activeToasts.push(toast);
+    document.body.appendChild(modal);
     
-    // Position toast above existing toasts
-    updateToastPositions();
-    
-    // Show tick for success messages after a short delay
-    if (type === 'success') {
+    // Auto-remove after duration (0 means no auto-remove)
+    if (duration > 0) {
         setTimeout(() => {
-            if (toast.parentElement && !toast.classList.contains('removing')) {
-                const messageElement = toast.querySelector('.cc-toast-message');
-                if (messageElement && !messageElement.querySelector('.cc-toast-success-tick')) {
-                    const tick = document.createElement('span');
-                    tick.className = 'cc-toast-success-tick';
-                    tick.textContent = '✓';
-                    messageElement.appendChild(tick);
-                }
+            if (modal.parentElement) {
+                modal.classList.add('removing');
+                setTimeout(() => {
+                    if (modal.parentElement) {
+                        modal.remove();
+                    }
+                }, 300);
             }
-        }, 500);
+        }, duration);
     }
     
-    // Auto-remove after duration
-    setTimeout(() => {
-        if (toast.parentElement) {
-            toast.classList.add('removing');
-            setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.remove();
-                    activeToasts = activeToasts.filter(t => t !== toast);
-                    updateToastPositions(); // Reposition remaining toasts
-                }
-            }, 300);
-        }
-    }, duration);
-    
-    return toast;
+    return modal;
 }
 
-function updateToastPositions() {
-    const baseTop = 20;
-    const toastHeight = 60; // Approximate height including margin
-    const gap = 10;
+// Inline alert system for less important notifications
+function showInlineAlert(message, type = 'info', container = null) {
+    const alert = document.createElement('div');
+    alert.className = `cc-inline-alert cc-inline-alert-${type}`;
     
-    activeToasts.forEach((toast, index) => {
-        if (toast.parentElement) {
-            toast.style.top = `${baseTop + (index * (toastHeight + gap))}px`;
-        }
-    });
+    const icons = {
+        info: getAssetUrl('info.svg'),
+        success: getAssetUrl('check-circle.svg'),
+        warning: getAssetUrl('alert-octagon.svg'),
+        error: getAssetUrl('x-circle.svg')
+    };
+    
+    alert.innerHTML = `
+        <div class="cc-inline-alert-content">
+            <img src="${icons[type]}" alt="${type}" class="cc-inline-alert-icon">
+            <span class="cc-inline-alert-message">${message}</span>
+            <button class="cc-inline-alert-close" onclick="this.closest('.cc-inline-alert').remove()">×</button>
+        </div>
+    `;
+    
+    // Add styles if not already added
+    if (!document.getElementById('cc-inline-alert-styles')) {
+        const style = document.createElement('style');
+        style.id = 'cc-inline-alert-styles';
+        style.textContent = `
+            .cc-inline-alert {
+                margin: 12px 0;
+                border-radius: 8px;
+                animation: fadeIn 0.3s ease-out;
+            }
+            
+            .cc-inline-alert-info {
+                background: #f0f9ff;
+                border: 1px solid #0ea5e9;
+                color: #0c4a6e;
+            }
+            
+            .cc-inline-alert-success {
+                background: #ecfdf5;
+                border: 1px solid #10b981;
+                color: #065f46;
+            }
+            
+            .cc-inline-alert-warning {
+                background: #fffbeb;
+                border: 1px solid #f59e0b;
+                color: #92400e;
+            }
+            
+            .cc-inline-alert-error {
+                background: #fef2f2;
+                border: 1px solid #ef4444;
+                color: #991b1b;
+            }
+            
+            .cc-inline-alert-content {
+                display: flex;
+                align-items: center;
+                padding: 12px 16px;
+                gap: 12px;
+            }
+            
+            .cc-inline-alert-icon {
+                width: 18px;
+                height: 18px;
+                flex-shrink: 0;
+            }
+            
+            .cc-inline-alert-message {
+                flex: 1;
+                font-size: 13px;
+                font-weight: 500;
+                line-height: 1.4;
+            }
+            
+            .cc-inline-alert-close {
+                background: none;
+                border: none;
+                font-size: 16px;
+                cursor: pointer;
+                opacity: 0.6;
+                padding: 0;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 3px;
+                transition: opacity 0.2s;
+            }
+            
+            .cc-inline-alert-close:hover {
+                opacity: 1;
+                background: rgba(0,0,0,0.1);
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    if (container) {
+        container.appendChild(alert);
+    } else {
+        // If no container specified, add to the top of the body
+        document.body.insertBefore(alert, document.body.firstChild);
+    }
+    
+    return alert;
 }
+
+// Legacy showToast function for backward compatibility (redirects to info modal)
+function showToast(message, type = 'info', duration = 3000) {
+    const titles = {
+        info: 'Information',
+        success: 'Success',
+        warning: 'Warning',
+        error: 'Error'
+    };
+    
+    return showInfoModal(titles[type] || 'Information', message, type, duration);
+}
+
 
 // Authentication in-progress modal
 let authInProgressModal = null;
@@ -768,6 +880,7 @@ async function upsertSettingsToCloud() {
         homework_redesign: isSyncEnabled(SYNC_HOMEWORK_REDESIGN_ENABLED_KEY, true),
         dark_mode: isSyncEnabled(SYNC_DARK_MODE_ENABLED_KEY, true),
         prompt_review: isSyncEnabled(SYNC_PROMPT_REVIEW_ENABLED_KEY, true),
+        hide_encryption_warning: isSyncEnabled(SYNC_HIDE_ENCRYPTION_WARNING_ENABLED_KEY, true),
     };
 
     // Always persist "what to sync" so other devices know what to apply.
@@ -783,6 +896,7 @@ async function upsertSettingsToCloud() {
         sync_homework_redesign_enabled: sync.homework_redesign,
         sync_dark_mode_enabled: sync.dark_mode,
         sync_prompt_review_enabled: sync.prompt_review,
+        sync_hide_encryption_warning_enabled: sync.hide_encryption_warning,
         updated_at: new Date().toISOString(),
     };
 
@@ -813,6 +927,9 @@ async function upsertSettingsToCloud() {
     if (sync.prompt_review) {
         body.prompt_review_enabled = getStoredBoolean(FEATURE_PROMPT_REVIEW_ENABLED_KEY, true);
         body.review_interval_days = getReviewIntervalDays();
+    }
+    if (sync.hide_encryption_warning) {
+        body.hide_encryption_warning_enabled = getStoredBoolean(FEATURE_HIDE_ENCRYPTION_WARNING_KEY, false);
     }
 
     const resp = await fetch(`${SUPABASE_URL}/rest/v1/user_settings?on_conflict=user_id`, {
@@ -864,6 +981,7 @@ async function pullSettingsFromCloud() {
     if (typeof row.sync_homework_redesign_enabled === 'boolean') setStoredBoolean(SYNC_HOMEWORK_REDESIGN_ENABLED_KEY, row.sync_homework_redesign_enabled);
     if (typeof row.sync_dark_mode_enabled === 'boolean') setStoredBoolean(SYNC_DARK_MODE_ENABLED_KEY, row.sync_dark_mode_enabled);
     if (typeof row.sync_prompt_review_enabled === 'boolean') setStoredBoolean(SYNC_PROMPT_REVIEW_ENABLED_KEY, row.sync_prompt_review_enabled);
+    if (typeof row.sync_hide_encryption_warning_enabled === 'boolean') setStoredBoolean(SYNC_HIDE_ENCRYPTION_WARNING_ENABLED_KEY, row.sync_hide_encryption_warning_enabled);
 
     const sync = {
         improved: isSyncEnabled(SYNC_IMPROVED_UI_ENABLED_KEY, true),
@@ -876,6 +994,7 @@ async function pullSettingsFromCloud() {
         homework_redesign: isSyncEnabled(SYNC_HOMEWORK_REDESIGN_ENABLED_KEY, true),
         dark_mode: isSyncEnabled(SYNC_DARK_MODE_ENABLED_KEY, true),
         prompt_review: isSyncEnabled(SYNC_PROMPT_REVIEW_ENABLED_KEY, true),
+        hide_encryption_warning: isSyncEnabled(SYNC_HIDE_ENCRYPTION_WARNING_ENABLED_KEY, true),
     };
 
     if (sync.improved && typeof row.improved_ui_enabled === 'boolean') {
@@ -917,6 +1036,9 @@ async function pullSettingsFromCloud() {
         if (typeof row.review_interval_days === 'number') {
             localStorage.setItem(REVIEW_INTERVAL_DAYS_KEY, String(Math.min(Math.max(Math.floor(row.review_interval_days), 1), 365)));
         }
+    }
+    if (sync.hide_encryption_warning && typeof row.hide_encryption_warning_enabled === 'boolean') {
+        setStoredBoolean(FEATURE_HIDE_ENCRYPTION_WARNING_KEY, row.hide_encryption_warning_enabled);
     }
 
     applyDarkMode();
@@ -2028,123 +2150,297 @@ function createBaseModal(idPrefix, title, bodyHtml, maxWidth = '500px') {
 }
 
 function showAllSettingsModal() {
+    const settingsCategories = [
+        {
+            title: 'Personalization',
+            description: 'Customize your experience',
+            items: [
+                { id: 'cc-open-photo-modal', label: 'Custom Profile Photo', icon: getAssetUrl('camera.svg'), color: '#E3F2FD', textColor: PRIMARY_BLUE, borderColor: PRIMARY_BLUE },
+                { id: 'cc-open-appearance-modal', label: 'Appearance Settings', icon: getAssetUrl('edit-2.svg'), color: '#E8F5E9', textColor: POSITIVE_GREEN, borderColor: POSITIVE_GREEN },
+                { id: 'cc-open-ui-tweaks-modal', label: 'UI Tweaks', icon: getAssetUrl('sliders.svg'), color: '#FFF3E0', textColor: '#EF6C00', borderColor: '#EF6C00' },
+            ]
+        },
+        {
+            title: 'Features & Controls',
+            description: 'Manage extension features',
+            items: [
+                { id: 'cc-open-feature-controls-modal', label: 'Feature Controls', icon: getAssetUrl('settings.svg'), color: '#EEF2FF', textColor: '#4338CA', borderColor: '#4338CA' },
+            ]
+        },
+        {
+            title: 'Account & Data',
+            description: 'Sync and account management',
+            items: [
+                { id: 'cc-open-account-sync-modal', label: 'Account & Sync', icon: getAssetUrl('cloud.svg'), color: '#E0F2F1', textColor: '#00695C', borderColor: '#00695C' },
+            ]
+        },
+        {
+            title: 'Information',
+            description: 'About and support',
+            items: [
+                { id: 'cc-open-about-modal', label: 'About', icon: getAssetUrl('info.svg'), color: '#F3E8FF', textColor: '#7E22CE', borderColor: '#7E22CE' },
+            ]
+        }
+    ];
+
     const bodyHtml = `
-        <div class="cc-settings-card-soft" style="margin-bottom: 18px;">
-            <p style="font-size: 0.95rem; color: #374151; margin: 0;">
+        <div class="cc-settings-card-soft" style="margin-bottom: 20px;">
+            <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #111827; font-weight: 600;">Settings & Customization</h3>
+            <p style="font-size: 0.9rem; color: #6b7280; margin: 0; line-height: 1.4;">
                 Manage all ClassCharts Improver settings and customizations in one place.
             </p>
         </div>
-        <div class="cc-settings-stack">
-            <button id="cc-open-photo-modal" class="cc-settings-hub-button" style="
-                background-color: #E3F2FD;
-                color: ${PRIMARY_BLUE};
-                border: 1px solid ${PRIMARY_BLUE};
-                padding: 15px;
-                border-radius: 8px;
-                font-weight: 600;
-                text-align: left;
-                cursor: pointer;
-                transition: background-color 0.2s, box-shadow 0.2s;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            ">
-                Custom Profile Photo
-                <span style="font-size: 1.5rem; line-height: 1;">&rarr;</span>
-            </button>
-            <button id="cc-open-appearance-modal" class="cc-settings-hub-button" style="
-                background-color: #E8F5E9;
-                color: ${POSITIVE_GREEN};
-                border: 1px solid ${POSITIVE_GREEN};
-                padding: 15px;
-                border-radius: 8px;
-                font-weight: 600;
-                text-align: left;
-                cursor: pointer;
-                transition: background-color 0.2s, box-shadow 0.2s;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            ">
-                More Appearance Settings
-                <span style="font-size: 1.5rem; line-height: 1;">&rarr;</span>
-            </button>
-            <button id="cc-open-ui-tweaks-modal" class="cc-settings-hub-button" style="
-                background-color: #FFF3E0;
-                color: #EF6C00;
-                border: 1px solid #EF6C00;
-                padding: 15px;
-                border-radius: 8px;
-                font-weight: 600;
-                text-align: left;
-                cursor: pointer;
-                transition: background-color 0.2s, box-shadow 0.2s;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            ">
-                UI Tweaks
-                <span style="font-size: 1.5rem; line-height: 1;">&rarr;</span>
-            </button>
-            <button id="cc-open-feature-controls-modal" class="cc-settings-hub-button" style="
-                background-color: #EEF2FF;
-                color: #4338CA;
-                border: 1px solid #4338CA;
-                padding: 15px;
-                border-radius: 8px;
-                font-weight: 600;
-                text-align: left;
-                cursor: pointer;
-                transition: background-color 0.2s, box-shadow 0.2s;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            ">
-                Feature Controls
-                <span style="font-size: 1.5rem; line-height: 1;">&rarr;</span>
-            </button>
-            <button id="cc-open-account-sync-modal" class="cc-settings-hub-button" style="
-                background-color: #E0F2F1;
-                color: #00695C;
-                border: 1px solid #00695C;
-                padding: 15px;
-                border-radius: 8px;
-                font-weight: 600;
-                text-align: left;
-                cursor: pointer;
-                transition: background-color 0.2s, box-shadow 0.2s;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            ">
-                Account & Sync
-                <span style="font-size: 1.5rem; line-height: 1;">&rarr;</span>
-            </button>
-            <button id="cc-open-about-modal" class="cc-settings-hub-button" style="
-                background-color: #F3E8FF;
-                color: #7E22CE;
-                border: 1px solid #7E22CE;
-                padding: 15px;
-                border-radius: 8px;
-                font-weight: 600;
-                text-align: left;
-                cursor: pointer;
-                transition: background-color 0.2s, box-shadow 0.2s;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            ">
-                About
-                <span style="font-size: 1.5rem; line-height: 1;">&rarr;</span>
-            </button>
-        </div>
-        <div class="cc-settings-actions">
+        
+        ${settingsCategories.map(category => `
+            <div class="cc-settings-category-section">
+                <div class="cc-category-section-header">
+                    <h4 class="cc-category-section-title">${category.title}</h4>
+                    <p class="cc-category-section-description">${category.description}</p>
+                </div>
+                <div class="cc-category-section-items">
+                    ${category.items.map(item => `
+                        <button id="${item.id}" class="cc-settings-hub-button" style="
+                            background-color: ${item.color};
+                            color: ${item.textColor};
+                            border: 1px solid ${item.borderColor};
+                            padding: 16px 20px;
+                            border-radius: 12px;
+                            font-weight: 600;
+                            text-align: left;
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            width: 100%;
+                            margin-bottom: 8px;
+                        ">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <img src="${item.icon}" alt="${item.label}" class="cc-settings-item-icon" style="
+                                    width: 36px;
+                                    height: 36px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    background: rgba(255, 255, 255, 0.3);
+                                    border-radius: 8px;
+                                    padding: 8px;
+                                ">
+                                <span style="font-size: 15px;">${item.label}</span>
+                            </div>
+                            <span style="font-size: 1.2rem; opacity: 0.7;">&rarr;</span>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('')}
+        
+        <div class="cc-settings-actions" style="margin-top: 24px;">
             <button id="cc-settings-hub-close-btn" class="cc-notes-button cc-notes-cancel-btn">Close</button>
         </div>
+        
         <style>
-             .cc-settings-hub-button:hover {
-                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-             }
+            /* Standardized Button System */
+            .cc-btn {
+                padding: 10px 16px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                border: 1px solid;
+                transition: all 0.2s ease;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                text-decoration: none;
+                min-height: 40px;
+                white-space: nowrap;
+            }
+            
+            .cc-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                transform: none !important;
+            }
+            
+            .cc-btn-primary {
+                background: ${PRIMARY_BLUE};
+                color: white;
+                border-color: ${PRIMARY_BLUE};
+            }
+            
+            .cc-btn-primary:hover:not(:disabled) {
+                background: #0288d1;
+                border-color: #0288d1;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(3, 155, 229, 0.3);
+            }
+            
+            .cc-btn-secondary {
+                background: #f3f4f6;
+                color: #374151;
+                border-color: #d1d5db;
+            }
+            
+            .cc-btn-secondary:hover:not(:disabled) {
+                background: #e5e7eb;
+                border-color: #9ca3af;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
+            
+            .cc-btn-success {
+                background: ${POSITIVE_GREEN};
+                color: white;
+                border-color: ${POSITIVE_GREEN};
+            }
+            
+            .cc-btn-success:hover:not(:disabled) {
+                background: #059669;
+                border-color: #059669;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+            }
+            
+            .cc-btn-danger {
+                background: #ef4444;
+                color: white;
+                border-color: #ef4444;
+            }
+            
+            .cc-btn-danger:hover:not(:disabled) {
+                background: #dc2626;
+                border-color: #dc2626;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+            }
+            
+            .cc-btn-ghost {
+                background: transparent;
+                color: #6b7280;
+                border-color: transparent;
+            }
+            
+            .cc-btn-ghost:hover:not(:disabled) {
+                background: #f9fafb;
+                color: #374151;
+                border-color: #e5e7eb;
+            }
+            
+            /* Legacy button compatibility */
+            .cc-notes-button {
+                padding: 10px 16px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                border: 1px solid;
+                transition: all 0.2s ease;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                min-height: 40px;
+            }
+            
+            .cc-notes-save-btn {
+                background: ${PRIMARY_BLUE};
+                color: white;
+                border-color: ${PRIMARY_BLUE};
+            }
+            
+            .cc-notes-save-btn:hover:not(:disabled) {
+                background: #0288d1;
+                border-color: #0288d1;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(3, 155, 229, 0.3);
+            }
+            
+            .cc-notes-cancel-btn {
+                background: #f3f4f6;
+                color: #374151;
+                border-color: #d1d5db;
+            }
+            
+            .cc-notes-cancel-btn:hover:not(:disabled) {
+                background: #e5e7eb;
+                border-color: #9ca3af;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
+            
+            .cc-goals-cancel-btn {
+                background: #fee2e2;
+                border-color: #ef4444;
+                color: #991b1b;
+            }
+            
+            .cc-goals-cancel-btn:hover:not(:disabled) {
+                background: #fecaca;
+                border-color: #dc2626;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
+            }
+            
+            /* Settings specific styles */
+            .cc-settings-category-section {
+                margin-bottom: 24px;
+            }
+            
+            .cc-category-section-header {
+                margin-bottom: 12px;
+                padding-left: 4px;
+            }
+            
+            .cc-category-section-title {
+                margin: 0 0 4px 0;
+                font-size: 14px;
+                font-weight: 700;
+                color: #374151;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .cc-category-section-description {
+                margin: 0;
+                font-size: 13px;
+                color: #6b7280;
+                line-height: 1.3;
+            }
+            
+            .cc-category-section-items {
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .cc-settings-hub-button:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+                filter: brightness(1.05);
+            }
+            
+            .cc-settings-hub-button:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            
+            .cc-settings-item-icon {
+                transition: transform 0.2s ease;
+            }
+            
+            .cc-settings-hub-button:hover .cc-settings-item-icon {
+                transform: scale(1.1);
+            }
+            
+            .cc-settings-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: 12px;
+                padding-top: 16px;
+                border-top: 1px solid #e5e7eb;
+                margin-top: 24px;
+            }
         </style>
     `;
 
@@ -2185,135 +2481,346 @@ function showAllSettingsModal() {
 function showFeatureControlsModal() {
     const showBadges = getStoredBoolean(FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY, true);
 
-    const checkbox = (id) => {
-        const checked = getStoredBoolean(id, true) ? 'checked' : '';
-        return `
-            <input type="checkbox" id="${id}" ${checked} style="width: 18px; height: 18px;">
-        `;
-    };
-
-    const rows = [
-        { key: FEATURE_IMPROVED_UI_ENABLED_KEY, label: 'Improved UI', badge: '🟢', defaultEnabled: true },
-        { key: HOMEWORK_REDESIGN_KEY, label: 'Homework tab redesign', badge: '🟢', defaultEnabled: false },
-        { key: HOMEWORK_DATE_HINT_KEY, label: 'Homework due date hint', badge: '🟢', defaultEnabled: false },
-        { key: FEATURE_CUSTOM_POSITIVE_ICON_ENABLED_KEY, label: 'Custom +1 icon replacement', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_ACCENT_COLOR_ENABLED_KEY, label: 'Custom accent colour', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_PROFILE_PHOTO_ENABLED_KEY, label: 'Custom profile photo', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_NOTES_ENABLED_KEY, label: 'Personal Notes', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_GOALS_ENABLED_KEY, label: 'Goals Tracker', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_REPORT_CONCERN_ENABLED_KEY, label: 'Report concern warning', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_CONTACT_LINK_ENABLED_KEY, label: 'Contact extension link', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_CODE_WARNING_ENABLED_KEY, label: '“My code” warning', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_MESSAGES_PLACEHOLDER_ENABLED_KEY, label: 'Messages guide placeholder', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, label: 'Announcements description', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_REFRESH_TWEAKS_ENABLED_KEY, label: 'Refresh Tweaks button', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, label: 'Detention celebration', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_LOGIN_ALERT_ENABLED_KEY, label: 'Login active notice', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_PROMPT_REVIEW_ENABLED_KEY, label: 'Welcome/Review prompts', badge: '🟢', defaultEnabled: true },
-        { key: FEATURE_CLOUD_SYNC_ENABLED_KEY, label: 'Cloud sync (Supabase)', badge: '🟠', defaultEnabled: true },
-        { key: FEATURE_DEVELOPER_PREVIEW_ALERT_ENABLED_KEY, label: 'Developer Preview Alert', badge: 'yellow', defaultEnabled: true },
-        { key: FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY, label: 'Show safety emojis in this list', badge: 'green', defaultEnabled: true },
-        { key: DARK_MODE_ENABLED_KEY, label: 'Dark mode (extension UI)', badge: '🟢', defaultEnabled: false },
+    const featureCategories = [
+        {
+            title: 'Core Interface',
+            description: 'Main UI improvements and navigation enhancements',
+            icon: getAssetUrl('layout.svg'),
+            features: [
+                { key: FEATURE_IMPROVED_UI_ENABLED_KEY, label: 'Improved UI', description: 'Enhanced visual design and layout', defaultEnabled: true, icon: getAssetUrl('layout.svg') },
+                { key: DARK_MODE_ENABLED_KEY, label: 'Dark mode', description: 'Dark theme for extension interface', defaultEnabled: false, icon: getAssetUrl('moon.svg') },
+                { key: FEATURE_ACCENT_COLOR_ENABLED_KEY, label: 'Custom accent colour', description: 'Personalized color scheme', defaultEnabled: true, icon: getAssetUrl('droplet.svg') },
+            ]
+        },
+        {
+            title: 'Homework Features',
+            description: 'Enhancements for the homework section',
+            icon: getAssetUrl('book-open.svg'),
+            features: [
+                { key: HOMEWORK_REDESIGN_KEY, label: 'Homework tab redesign', description: 'Modern card-based layout', defaultEnabled: false, icon: getAssetUrl('grid.svg') },
+                { key: HOMEWORK_DATE_HINT_KEY, label: 'Due date hints', description: 'Visual indicators for due dates', defaultEnabled: false, icon: getAssetUrl('calendar.svg') },
+            ]
+        },
+        {
+            title: 'Personal Tools',
+            description: 'Productivity and personal organization features',
+            icon: getAssetUrl('user.svg'),
+            features: [
+                { key: FEATURE_NOTES_ENABLED_KEY, label: 'Personal Notes', description: 'Private note-taking system', defaultEnabled: true, icon: getAssetUrl('file-text.svg') },
+                { key: FEATURE_GOALS_ENABLED_KEY, label: 'Goals Tracker', description: 'Track personal objectives', defaultEnabled: true, icon: getAssetUrl('target.svg') },
+                { key: FEATURE_PROFILE_PHOTO_ENABLED_KEY, label: 'Custom profile photo', description: 'Personalized profile image', defaultEnabled: true, icon: getAssetUrl('camera.svg') },
+                { key: FEATURE_HIDE_ENCRYPTION_WARNING_KEY, label: 'Hide encryption warning', description: 'Hide cloud sync encryption notice in notes', defaultEnabled: false, icon: getAssetUrl('shield-off.svg') },
+            ]
+        },
+        {
+            title: 'Behavior & Rewards',
+            description: 'Features related to behavior points and rewards',
+            icon: getAssetUrl('award.svg'),
+            features: [
+                { key: FEATURE_CUSTOM_POSITIVE_ICON_ENABLED_KEY, label: 'Custom +1 icon', description: 'Personalized positive behavior icon', defaultEnabled: true, icon: getAssetUrl('smile.svg') },
+                { key: FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, label: 'Detention celebration', description: 'Fun animations for no detentions', defaultEnabled: true, icon: getAssetUrl('zap.svg') },
+            ]
+        },
+        {
+            title: 'Safety & Warnings',
+            description: 'Safety alerts and helpful warnings',
+            icon: getAssetUrl('shield.svg'),
+            features: [
+                { key: FEATURE_REPORT_CONCERN_ENABLED_KEY, label: 'Report concern warning', description: 'Alert for report concerns', defaultEnabled: true, icon: getAssetUrl('alert-octagon.svg') },
+                { key: FEATURE_CODE_WARNING_ENABLED_KEY, label: '"My code" warning', description: 'Alert for code sharing', defaultEnabled: true, icon: getAssetUrl('code.svg') },
+                { key: FEATURE_LOGIN_ALERT_ENABLED_KEY, label: 'Login active notice', description: 'Show when account is in use', defaultEnabled: true, icon: getAssetUrl('log-in.svg') },
+                { key: FEATURE_DEVELOPER_PREVIEW_ALERT_ENABLED_KEY, label: 'Developer Preview Alert', description: 'Warning for developer features', defaultEnabled: true, icon: getAssetUrl('terminal.svg') },
+            ]
+        },
+        {
+            title: 'Communication',
+            description: 'Messaging and announcement enhancements',
+            icon: getAssetUrl('message-square.svg'),
+            features: [
+                { key: FEATURE_MESSAGES_PLACEHOLDER_ENABLED_KEY, label: 'Messages guide', description: 'Helpful text for messages', defaultEnabled: true, icon: getAssetUrl('message-circle.svg') },
+                { key: FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, label: 'Announcements description', description: 'Enhanced announcement display', defaultEnabled: true, icon: getAssetUrl('volume-2.svg') },
+            ]
+        },
+        {
+            title: 'System & Sync',
+            description: 'Cloud sync and system features',
+            icon: getAssetUrl('cloud.svg'),
+            features: [
+                { key: FEATURE_CLOUD_SYNC_ENABLED_KEY, label: 'Cloud sync', description: 'Sync settings across devices', defaultEnabled: true, icon: getAssetUrl('refresh-cw.svg') },
+                { key: FEATURE_REFRESH_TWEAKS_ENABLED_KEY, label: 'Refresh Tweaks button', description: 'Quick refresh for UI issues', defaultEnabled: true, icon: getAssetUrl('refresh-ccw.svg') },
+                { key: FEATURE_PROMPT_REVIEW_ENABLED_KEY, label: 'Welcome/Review prompts', description: 'Occasional feedback requests', defaultEnabled: true, icon: getAssetUrl('star.svg') },
+            ]
+        },
+        {
+            title: 'Links & Contact',
+            description: 'External links and contact options',
+            icon: getAssetUrl('external-link.svg'),
+            features: [
+                { key: FEATURE_CONTACT_LINK_ENABLED_KEY, label: 'Contact extension link', description: 'Quick access to support', defaultEnabled: true, icon: getAssetUrl('mail.svg') },
+            ]
+        },
+        {
+            title: 'Interface Options',
+            description: 'Display and interface preferences',
+            icon: getAssetUrl('settings.svg'),
+            features: [
+                { key: FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY, label: 'Show safety emojis', description: 'Visual indicators in this list', defaultEnabled: true, icon: getAssetUrl('eye.svg') },
+            ]
+        }
     ];
 
     const bodyHtml = `
         <div class="cc-settings-stack">
             <div class="cc-settings-card-soft">
-                <p class="cc-settings-subtitle" style="font-size:0.9rem;">
-                    Toggle each feature on/off. Changes take effect immediately (within a moment).
+                <p class="cc-settings-subtitle" style="font-size:0.95rem; margin-bottom: 16px;">
+                    Organized by category. Changes take effect immediately.
                 </p>
             </div>
 
-            ${rows.map(r => {
-        const checked = getStoredBoolean(r.key, r.defaultEnabled);
-        return `
-                <div class="cc-settings-card" style="display:flex; align-items:center; justify-content: space-between; gap: 14px;">
-                    <div style="display:flex; align-items:center; gap: 10px; min-width: 0;">
-                        <span class="cc-safety-badge ${showBadges ? '' : 'hidden'}" style="width: 28px; text-align:center; font-size: 18px;">${r.badge}</span>
-                        <div style="display:flex; flex-direction: column; gap: 2px; min-width: 0;">
-                            <div style="font-weight: 700; color: #111827; white-space: nowrap; overflow:hidden; text-overflow: ellipsis;">${r.label}</div>
-                            <div style="font-size: 0.8rem; color:#6b7280;">${r.key === FEATURE_CLOUD_SYNC_ENABLED_KEY ? 'Syncing to Supabase when connected.' : 'Visual/UI-only unless otherwise noted.'}</div>
+            ${featureCategories.map(category => `
+                <div class="cc-settings-category">
+                    <div class="cc-category-header">
+                        <img src="${category.icon}" alt="${category.title}" class="cc-category-icon">
+                        <div class="cc-category-info">
+                            <h4 class="cc-category-title">${category.title}</h4>
+                            <p class="cc-category-description">${category.description}</p>
                         </div>
                     </div>
-                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                        <input type="checkbox" id="${r.key}" ${checked ? 'checked' : ''}>
-                    </label>
+                    <div class="cc-category-features">
+                        ${category.features.map(feature => {
+                            const checked = getStoredBoolean(feature.key, feature.defaultEnabled);
+                            return `
+                                <div class="cc-feature-item">
+                                    <div class="cc-feature-info">
+                                        <div class="cc-feature-label">
+                                            <img src="${feature.icon}" alt="${feature.label}" class="cc-feature-icon">
+                                            ${feature.label}
+                                        </div>
+                                        <div class="cc-feature-description">${feature.description}</div>
+                                    </div>
+                                    <label class="cc-feature-toggle">
+                                        <input type="checkbox" id="${feature.key}" ${checked ? 'checked' : ''}>
+                                        <span class="cc-toggle-slider"></span>
+                                    </label>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
                 </div>
-            `;
-    }).join('')}
+            `).join('')}
 
-            <div class="cc-settings-actions" style="margin-top: 6px;">
+            <div class="cc-settings-actions" style="margin-top: 24px;">
                 <button id="cc-feature-controls-done" class="cc-notes-button cc-notes-save-btn">Done</button>
             </div>
         </div>
+        
+        <style>
+            .cc-settings-category {
+                margin-bottom: 24px;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                overflow: hidden;
+                background: white;
+            }
+            
+            .cc-category-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 16px 20px;
+                background: #f8fafc;
+                border-bottom: 1px solid #e5e7eb;
+            }
+            
+            .cc-category-icon {
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #f1f5f9;
+                border-radius: 8px;
+                padding: 6px;
+            }
+            
+            .cc-category-info {
+                flex: 1;
+            }
+            
+            .cc-category-title {
+                margin: 0 0 4px 0;
+                font-size: 16px;
+                font-weight: 600;
+                color: #111827;
+            }
+            
+            .cc-category-description {
+                margin: 0;
+                font-size: 13px;
+                color: #6b7280;
+                line-height: 1.4;
+            }
+            
+            .cc-category-features {
+                padding: 4px;
+            }
+            
+            .cc-feature-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 16px;
+                border-radius: 8px;
+                transition: background-color 0.2s;
+            }
+            
+            .cc-feature-item:hover {
+                background: #f9fafb;
+            }
+            
+            .cc-feature-info {
+                flex: 1;
+                min-width: 0;
+            }
+            
+            .cc-feature-label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-weight: 500;
+                color: #111827;
+                font-size: 14px;
+                margin-bottom: 2px;
+            }
+            
+            .cc-feature-icon {
+                width: 16px;
+                height: 16px;
+                flex-shrink: 0;
+            }
+            
+            .cc-feature-description {
+                font-size: 12px;
+                color: #6b7280;
+                line-height: 1.3;
+            }
+            
+            .cc-feature-toggle {
+                position: relative;
+                display: inline-block;
+                width: 44px;
+                height: 24px;
+                margin-left: 12px;
+            }
+            
+            .cc-feature-toggle input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+            
+            .cc-toggle-slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: #cbd5e1;
+                transition: 0.3s;
+                border-radius: 24px;
+            }
+            
+            .cc-toggle-slider:before {
+                position: absolute;
+                content: "";
+                height: 18px;
+                width: 18px;
+                left: 3px;
+                bottom: 3px;
+                background-color: white;
+                transition: 0.3s;
+                border-radius: 50%;
+            }
+            
+            input:checked + .cc-toggle-slider {
+                background-color: ${PRIMARY_BLUE};
+            }
+            
+            input:checked + .cc-toggle-slider:before {
+                transform: translateX(20px);
+            }
+            
+            .cc-safety-badge.hidden {
+                display: none;
+            }
+        </style>
     `;
 
     const { closeModal } = createBaseModal('cc-feature-controls', 'Feature Controls', bodyHtml, '560px');
     document.getElementById('cc-feature-controls-done').addEventListener('click', closeModal);
 
-    // Apply immediate behavior when toggles change
-    const applyImmediately = () => {
-        applyImprovedUI(getImprovedUIStatus());
-        applyAccentColor();
-        applyCustomProfilePhoto();
-        updateCustomIcons();
-        injectHomeworkDateHint();
-        applyHomeworkRedesign();
-        applyDarkMode();
+    featureCategories.forEach(category => {
+        category.features.forEach(feature => {
+            const el = document.getElementById(feature.key);
+            if (!el) return;
+            el.addEventListener('change', () => {
+                if (feature.key === HOMEWORK_REDESIGN_KEY) setHomeworkRedesignStatus(el.checked);
+                else if (feature.key === HOMEWORK_DATE_HINT_KEY) setHomeworkDateHintStatus(el.checked);
+                else if (feature.key === DARK_MODE_ENABLED_KEY) setDarkModeEnabled(el.checked);
+                else setStoredBoolean(feature.key, el.checked);
+                
+                // Apply immediate behavior when toggles change
+                applyImprovedUI(getImprovedUIStatus());
+                applyAccentColor();
+                applyCustomProfilePhoto();
+                updateCustomIcons();
+                injectHomeworkDateHint();
+                applyHomeworkRedesign();
+                applyDarkMode();
 
-        // Rebuild menu if notes/goals toggles changed
-        const menuInjected = document.querySelector('.cc-improver-header');
-        if (menuInjected) {
-            document.querySelectorAll('#cc-improver-notes-menu-item, #cc-improver-goals-menu-item, #cc-improver-settings-hub-menu-item, .cc-improver-header, .cc-improver-divider')
-                .forEach(el => el.remove());
-        }
-        if (!document.querySelector('.cc-improver-header') && (isNotesEnabled() || isGoalsEnabled())) {
-            const possible = document.querySelector(MESSAGE_MENU_SELECTOR);
-            if (possible) createMenuItem();
-        } else if (!document.querySelector('.cc-improver-header')) {
-            const possible = document.querySelector(MESSAGE_MENU_SELECTOR);
-            if (possible) createMenuItem();
-        }
-    };
-
-    rows.forEach(r => {
-        const el = document.getElementById(r.key);
-        if (!el) return;
-        el.addEventListener('change', () => {
-            if (r.key === HOMEWORK_REDESIGN_KEY) setHomeworkRedesignStatus(el.checked);
-            else if (r.key === HOMEWORK_DATE_HINT_KEY) setHomeworkDateHintStatus(el.checked);
-            else if (r.key === DARK_MODE_ENABLED_KEY) setDarkModeEnabled(el.checked);
-            else setStoredBoolean(r.key, el.checked);
-
-            if (r.key === FEATURE_CLOUD_SYNC_ENABLED_KEY) {
-                if (!el.checked && autoSyncInterval) {
-                    clearInterval(autoSyncInterval);
-                    autoSyncInterval = null;
+                // Rebuild menu if notes/goals toggles changed
+                const menuInjected = document.querySelector('.cc-improver-header');
+                if (menuInjected) {
+                    document.querySelectorAll('#cc-improver-notes-menu-item, #cc-improver-goals-menu-item, #cc-improver-settings-hub-menu-item, .cc-improver-header, .cc-improver-divider')
+                        .forEach(el => el.remove());
                 }
-                if (el.checked) {
-                    getCloudSession().then((s) => {
-                        if (s?.access_token) {
-                            pullSettingsFromCloud().catch(() => {});
-                            startAutoCloudSync();
-                        }
+                if (!document.querySelector('.cc-improver-header') && (isNotesEnabled() || isGoalsEnabled())) {
+                    const possible = document.querySelector(MESSAGE_MENU_SELECTOR);
+                    if (possible) createMenuItem();
+                } else if (!document.querySelector('.cc-improver-header')) {
+                    const possible = document.querySelector(MESSAGE_MENU_SELECTOR);
+                    if (possible) createMenuItem();
+                }
+
+                if (feature.key === FEATURE_CLOUD_SYNC_ENABLED_KEY) {
+                    if (!el.checked && autoSyncInterval) {
+                        clearInterval(autoSyncInterval);
+                        autoSyncInterval = null;
+                    }
+                    if (el.checked) {
+                        getCloudSession().then((s) => {
+                            if (s?.access_token) {
+                                pullSettingsFromCloud().catch(() => {});
+                                startAutoCloudSync();
+                            }
+                        });
+                    }
+                }
+
+                // Show/hide badges live
+                if (feature.key === FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY) {
+                    const hide = !el.checked;
+                    document.querySelectorAll('.cc-safety-badge').forEach(b => {
+                        if (hide) b.classList.add('hidden');
+                        else b.classList.remove('hidden');
                     });
                 }
-            }
 
-            // Show/hide badges live
-            if (r.key === FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY) {
-                const hide = !el.checked;
-                document.querySelectorAll('.cc-safety-badge').forEach(b => {
-                    if (hide) b.classList.add('hidden');
-                    else b.classList.remove('hidden');
-                });
-            }
-
-            // Homework toggles use existing setters to stay consistent
-            if (r.key === HOMEWORK_REDESIGN_KEY) applyHomeworkRedesign();
-            if (r.key === HOMEWORK_DATE_HINT_KEY) injectHomeworkDateHint();
-
-            applyImmediately();
+                // Homework toggles use existing setters to stay consistent
+                if (feature.key === HOMEWORK_REDESIGN_KEY) applyHomeworkRedesign();
+                if (feature.key === HOMEWORK_DATE_HINT_KEY) injectHomeworkDateHint();
+            });
         });
     });
 }
@@ -2322,40 +2829,237 @@ function showUITweaksModal() {
     const isRedesignEnabled = getHomeworkRedesignStatus();
     const reviewIntervalDays = getReviewIntervalDays();
 
+    const uiTweakCategories = [
+        {
+            title: 'Homework Interface',
+            description: 'Customize the homework section appearance',
+            items: [
+                {
+                    key: 'homework-redesign',
+                    label: 'Homework Tab Redesign',
+                    description: 'Modern card-based layout with improved spacing and visual hierarchy',
+                    enabled: isRedesignEnabled,
+                    icon: '??'
+                }
+            ]
+        },
+        {
+            title: 'User Experience',
+            description: 'Manage prompts and feedback requests',
+            items: [
+                {
+                    key: 'review-prompt',
+                    label: 'Review Prompt Frequency',
+                    description: 'How often to show the "Enjoying the Improver?" feedback request',
+                    enabled: true,
+                    icon: '??',
+                    type: 'number',
+                    value: reviewIntervalDays,
+                    min: 1,
+                    max: 365
+                }
+            ]
+        },
+        {
+            title: 'Coming Soon',
+            description: 'Additional customization options in development',
+            items: [
+                {
+                    key: 'future-features',
+                    label: 'New UI Tweaks',
+                    description: 'More appearance and behavior options will be added here as they are developed',
+                    enabled: false,
+                    icon: '??',
+                    type: 'info'
+                }
+            ]
+        }
+    ];
+
     const bodyHtml = `
         <div class="cc-settings-stack">
-            <div class="cc-settings-card-soft">
-                <p class="cc-settings-subtitle">Fine-tune the look and feel of the student portal.</p>
+            <div class="cc-settings-card-soft" style="margin-bottom: 20px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 1.05rem; color: #111827; font-weight: 600;">UI Tweaks</h3>
+                <p style="font-size: 0.9rem; color: #6b7280; margin: 0; line-height: 1.4;">
+                    Fine-tune the look and feel of the ClassCharts student portal.
+                </p>
             </div>
 
-            <div class="cc-settings-card" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <span style="font-weight: 600; color: #111827;">Homework Tab Redesign</span>
-                    <span style="font-size: 0.75rem; color: #6b7280;">Enable a cleaner, more modern layout for homework cards.</span>
+            ${uiTweakCategories.map(category => `
+                <div class="cc-ui-tweak-category">
+                    <div class="cc-tweak-category-header">
+                        <h4 class="cc-tweak-category-title">${category.title}</h4>
+                        <p class="cc-tweak-category-description">${category.description}</p>
+                    </div>
+                    <div class="cc-tweak-category-items">
+                        ${category.items.map(item => {
+                            if (item.type === 'number') {
+                                return `
+                                    <div class="cc-tweak-item cc-tweak-item-number">
+                                        <div class="cc-tweak-info">
+                                            <div class="cc-tweak-label">
+                                                <span class="cc-tweak-icon">${item.icon}</span>
+                                                ${item.label}
+                                            </div>
+                                            <div class="cc-tweak-description">${item.description}</div>
+                                        </div>
+                                        <div class="cc-tweak-control">
+                                            <input 
+                                                type="number" 
+                                                id="cc-review-interval-days" 
+                                                class="cc-number-input"
+                                                value="${item.value}" 
+                                                min="${item.min}" 
+                                                max="${item.max}"
+                                                style="width: 80px; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;"
+                                            >
+                                            <span style="font-size: 12px; color: #6b7280; margin-left: 6px;">days</span>
+                                        </div>
+                                    </div>
+                                `;
+                            } else if (item.type === 'info') {
+                                return `
+                                    <div class="cc-tweak-item cc-tweak-item-info">
+                                        <div class="cc-tweak-info">
+                                            <div class="cc-tweak-label">
+                                                <span class="cc-tweak-icon">${item.icon}</span>
+                                                ${item.label}
+                                            </div>
+                                            <div class="cc-tweak-description">${item.description}</div>
+                                        </div>
+                                        <div class="cc-tweak-status">
+                                            <span style="font-size: 12px; color: #9ca3af; font-style: italic;">Coming soon</span>
+                                        </div>
+                                    </div>
+                                `;
+                            } else {
+                                return `
+                                    <div class="cc-tweak-item">
+                                        <div class="cc-tweak-info">
+                                            <div class="cc-tweak-label">
+                                                <span class="cc-tweak-icon">${item.icon}</span>
+                                                ${item.label}
+                                            </div>
+                                            <div class="cc-tweak-description">${item.description}</div>
+                                        </div>
+                                        <div class="cc-tweak-control">
+                                            <label class="cc-switch">
+                                                <input type="checkbox" id="cc-homework-redesign-toggle" ${item.enabled ? 'checked' : ''}>
+                                                <span class="cc-slider round"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        }).join('')}
+                    </div>
                 </div>
-                <label class="cc-switch">
-                    <input type="checkbox" id="cc-homework-redesign-toggle" ${isRedesignEnabled ? 'checked' : ''}>
-                    <span class="cc-slider round"></span>
-                </label>
+            `).join('')}
+
+            <div class="cc-settings-actions" style="margin-top: 24px;">
+                <button id="cc-ui-tweaks-close-btn" class="cc-notes-button cc-notes-save-btn">Done</button>
             </div>
+        </div>
+
+        <style>
+            .cc-ui-tweak-category {
+                margin-bottom: 24px;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                overflow: hidden;
+                background: white;
+            }
             
-            <div class="cc-settings-card">
-                <div class="cc-improver-new-func-label" style="font-size: 0.75rem; color: #9ca3af; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #f3f4f6; padding-bottom: 8px; margin-bottom: 12px;">New Functionality</div>
-                <p style="font-size: 0.85rem; color: #4b5563;">Additional customization options are added here as they are developed.</p>
-            </div>
-
-            <div class="cc-settings-card" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <span style="font-weight: 600; color: #111827;">"Enjoying the Improver?" Prompt</span>
-                    <span style="font-size: 0.75rem; color: #6b7280;">Show the review prompt every N days.</span>
-                </div>
-                <input id="cc-review-interval-days" type="number" min="1" max="365" value="${reviewIntervalDays}" class="cc-add-goal-input" style="width: 90px;">
-            </div>
-        </div>
-
-        <div class="cc-settings-actions" style="margin-top: 24px;">
-            <button id="cc-ui-tweaks-close-btn" class="cc-notes-button cc-notes-save-btn">Done</button>
-        </div>
+            .cc-tweak-category-header {
+                padding: 16px 20px;
+                background: #f8fafc;
+                border-bottom: 1px solid #e5e7eb;
+            }
+            
+            .cc-tweak-category-title {
+                margin: 0 0 4px 0;
+                font-size: 14px;
+                font-weight: 600;
+                color: #374151;
+            }
+            
+            .cc-tweak-category-description {
+                margin: 0;
+                font-size: 12px;
+                color: #6b7280;
+                line-height: 1.3;
+            }
+            
+            .cc-tweak-category-items {
+                padding: 4px;
+            }
+            
+            .cc-tweak-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 16px;
+                border-radius: 8px;
+                transition: background-color 0.2s;
+            }
+            
+            .cc-tweak-item:hover {
+                background: #f9fafb;
+            }
+            
+            .cc-tweak-item-number {
+                align-items: flex-start;
+            }
+            
+            .cc-tweak-item-info {
+                opacity: 0.7;
+            }
+            
+            .cc-tweak-info {
+                flex: 1;
+                min-width: 0;
+            }
+            
+            .cc-tweak-label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-weight: 500;
+                color: #111827;
+                font-size: 14px;
+                margin-bottom: 4px;
+            }
+            
+            .cc-tweak-icon {
+                font-size: 16px;
+                width: 24px;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #f1f5f9;
+                border-radius: 6px;
+            }
+            
+            .cc-tweak-description {
+                font-size: 12px;
+                color: #6b7280;
+                line-height: 1.4;
+                margin-left: 32px;
+            }
+            
+            .cc-tweak-control {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .cc-number-input:focus {
+                outline: none;
+                border-color: ${PRIMARY_BLUE};
+                box-shadow: 0 0 0 3px rgba(3, 155, 229, 0.1);
+            }
+        </style>
     `;
 
     const { closeModal } = createBaseModal('cc-ui-tweaks', 'UI Tweaks', bodyHtml, '450px');
@@ -2661,7 +3365,8 @@ function showAccountSyncModal() {
 function showNotesModal() {
     if (!isNotesEnabled()) return;
     const showCloudWarning = isCloudSyncEnabled() && isSyncEnabled(SYNC_NOTES_ENABLED_KEY, true);
-    const warningHtml = showCloudWarning ? `
+    const hideEncryptionWarning = getStoredBoolean(FEATURE_HIDE_ENCRYPTION_WARNING_KEY, false);
+    const warningHtml = showCloudWarning && !hideEncryptionWarning ? `
         <div class="cc-settings-card-soft" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; margin-bottom: 14px; padding: 14px;">
             <div style="display:flex; gap:12px; align-items:flex-start;">
                 <img src="${getAssetUrl('shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
@@ -2746,7 +3451,8 @@ function showNotesModal() {
 function showGoalsModal() {
     if (!isGoalsEnabled()) return;
     const showCloudWarning = isCloudSyncEnabled() && isSyncEnabled(SYNC_GOALS_ENABLED_KEY, true);
-    const warningHtml = showCloudWarning ? `
+    const hideEncryptionWarning = getStoredBoolean(FEATURE_HIDE_ENCRYPTION_WARNING_KEY, false);
+    const warningHtml = showCloudWarning && !hideEncryptionWarning ? `
         <div class="cc-settings-card-soft" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; margin-bottom: 14px; padding: 14px;">
             <div style="display:flex; gap:12px; align-items:flex-start;">
                 <img src="${getAssetUrl('shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
@@ -2954,7 +3660,8 @@ function showProfilePhotoModal() {
     if (!isProfilePhotoEnabled()) return;
     const currentPhoto = loadCustomProfilePhoto() || CLASSCHARTS_DEFAULT_PHOTO_URL;
     const showCloudWarning = isCloudSyncEnabled() && isSyncEnabled(SYNC_PROFILE_PHOTO_ENABLED_KEY, true);
-    const warningHtml = showCloudWarning ? `
+    const hideEncryptionWarning = getStoredBoolean(FEATURE_HIDE_ENCRYPTION_WARNING_KEY, false);
+    const warningHtml = showCloudWarning && !hideEncryptionWarning ? `
         <div class="cc-settings-card-soft" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; margin-bottom: 14px; padding: 14px;">
             <div style="display:flex; gap:12px; align-items:flex-start;">
                 <img src="${getAssetUrl('shield-off.svg')}" alt="Security warning" style="width: 22px; height: 22px; margin-top: 2px; filter: invert(53%) sepia(85%) saturate(3800%) hue-rotate(340deg) brightness(103%) contrast(90%);">
@@ -3755,11 +4462,39 @@ function updateCustomIcons() {
                 cursor: default;
             `;
         }
+    });}
+
+function updateReportConcernIcon() {
+    // Find the report concern menu item
+    const reportConcernItems = document.querySelectorAll('.desktop-drawer-pupil-menu-item');
+    reportConcernItems.forEach(item => {
+        const textElement = item.querySelector('.MuiListItemText-primary');
+        if (textElement && textElement.textContent.trim() === 'Report concern') {
+            const iconElement = item.querySelector('.MuiListItemIcon-root svg');
+            if (iconElement && !iconElement.dataset.ccImproverReportIcon) {
+                // Store original icon
+                iconElement.dataset.ccImproverReportIcon = 'true';
+                iconElement.dataset.ccImproverOriginalIcon = iconElement.outerHTML;
+                
+                // Replace with custom icon
+                const customIcon = document.createElement('img');
+                customIcon.src = getAssetUrl('alert-octagon.svg');
+                customIcon.alt = 'Report concern';
+                customIcon.style.cssText = `
+                    width: 24px;
+                    height: 24px;
+                    filter: invert(53%) sepia(85%) saturate(3065%) hue-rotate(334deg) brightness(99%) contrast(92%);
+                `;
+                
+                iconElement.parentNode.replaceChild(customIcon, iconElement);
+            }
+        }
     });
 }
 
 function replacePositiveAchievementIcons() {
     updateCustomIcons();
+    updateReportConcernIcon();
 }
 
 function injectHomeworkDateHint() {
@@ -4199,6 +4934,92 @@ function injectAnnouncementsDescription() {
     }
 }
 
+function injectVerifiedSchoolIcons() {
+    // Find all elements with school name class (jss43 based on user's example)
+    const schoolNameElements = document.querySelectorAll('.jss43');
+    const injectedClass = 'cc-improver-verified-icon';
+    
+    schoolNameElements.forEach(element => {
+        // Only add icon if it doesn't already exist
+        if (!element.querySelector('.' + injectedClass)) {
+            const verifiedIcon = document.createElement('img');
+            verifiedIcon.src = getAssetUrl('verified.svg');
+            verifiedIcon.alt = 'Verified';
+            verifiedIcon.className = injectedClass;
+            verifiedIcon.style.cssText = `
+                width: 16px;
+                height: 16px;
+                margin-left: 6px;
+                vertical-align: middle;
+                cursor: help;
+                position: relative;
+            `;
+            
+            // Add tooltip functionality
+            verifiedIcon.addEventListener('mouseenter', (e) => {
+                showVerifiedTooltip(e.target);
+            });
+            
+            verifiedIcon.addEventListener('mouseleave', () => {
+                hideVerifiedTooltip();
+            });
+            
+            element.appendChild(verifiedIcon);
+        }
+    });
+}
+
+function showVerifiedTooltip(targetElement) {
+    // Remove any existing tooltip
+    hideVerifiedTooltip();
+    
+    const tooltip = document.createElement('div');
+    tooltip.id = 'cc-verified-tooltip';
+    tooltip.textContent = 'Verified school or organisation';
+    tooltip.style.cssText = `
+        position: absolute;
+        background: #1f2937;
+        color: white;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        z-index: 1000000;
+        pointer-events: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        opacity: 0;
+        transform: translateY(-5px);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    `;
+    
+    document.body.appendChild(tooltip);
+    
+    // Position tooltip
+    const rect = targetElement.getBoundingClientRect();
+    tooltip.style.left = `${rect.left + rect.width / 2 - tooltip.offsetWidth / 2}px`;
+    tooltip.style.top = `${rect.top - tooltip.offsetHeight - 8}px`;
+    
+    // Animate in
+    setTimeout(() => {
+        tooltip.style.opacity = '1';
+        tooltip.style.transform = 'translateY(0)';
+    }, 10);
+}
+
+function hideVerifiedTooltip() {
+    const existingTooltip = document.getElementById('cc-verified-tooltip');
+    if (existingTooltip) {
+        existingTooltip.style.opacity = '0';
+        existingTooltip.style.transform = 'translateY(-5px)';
+        setTimeout(() => {
+            if (existingTooltip.parentElement) {
+                existingTooltip.remove();
+            }
+        }, 200);
+    }
+}
+
 function injectLoginAlert() {
     const targetDiv = document.querySelector('.box');
     const injectedClass = 'cc-improver-login-alert';
@@ -4455,6 +5276,9 @@ function initObserver() {
         if (isFeatureEnabledByKey(FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, true)) injectAnnouncementsDescription();
         if (isFeatureEnabledByKey(FEATURE_REFRESH_TWEAKS_ENABLED_KEY, true)) injectRefreshTweaksButton();
         if (isFeatureEnabledByKey(FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, true)) injectDetentionCelebration();
+        
+        // Always inject verified school icons (can't be turned off)
+        injectVerifiedSchoolIcons();
 
         if (attempts >= maxAttempts) {
             clearInterval(interval);
