@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_6';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_7';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -4934,91 +4934,9 @@ function injectAnnouncementsDescription() {
     }
 }
 
-function injectVerifiedSchoolIcons() {
-    // Find all elements with school name class (jss43 based on user's example)
-    const schoolNameElements = document.querySelectorAll('.jss43');
-    const injectedClass = 'cc-improver-verified-icon';
-    
-    schoolNameElements.forEach(element => {
-        // Only add icon if it doesn't already exist
-        if (!element.querySelector('.' + injectedClass)) {
-            const verifiedIcon = document.createElement('img');
-            verifiedIcon.src = getAssetUrl('verified.svg');
-            verifiedIcon.alt = 'Verified';
-            verifiedIcon.className = injectedClass;
-            verifiedIcon.style.cssText = `
-                width: 16px;
-                height: 16px;
-                margin-left: 6px;
-                vertical-align: middle;
-                cursor: help;
-                position: relative;
-            `;
-            
-            // Add tooltip functionality
-            verifiedIcon.addEventListener('mouseenter', (e) => {
-                showVerifiedTooltip(e.target);
-            });
-            
-            verifiedIcon.addEventListener('mouseleave', () => {
-                hideVerifiedTooltip();
-            });
-            
-            element.appendChild(verifiedIcon);
-        }
-    });
-}
+// Removed injectVerifiedSchoolIcons function - verified icons no longer displayed
 
-function showVerifiedTooltip(targetElement) {
-    // Remove any existing tooltip
-    hideVerifiedTooltip();
-    
-    const tooltip = document.createElement('div');
-    tooltip.id = 'cc-verified-tooltip';
-    tooltip.textContent = 'Verified school or organisation';
-    tooltip.style.cssText = `
-        position: absolute;
-        background: #1f2937;
-        color: white;
-        padding: 6px 10px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 500;
-        white-space: nowrap;
-        z-index: 1000000;
-        pointer-events: none;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        opacity: 0;
-        transform: translateY(-5px);
-        transition: opacity 0.2s ease, transform 0.2s ease;
-    `;
-    
-    document.body.appendChild(tooltip);
-    
-    // Position tooltip
-    const rect = targetElement.getBoundingClientRect();
-    tooltip.style.left = `${rect.left + rect.width / 2 - tooltip.offsetWidth / 2}px`;
-    tooltip.style.top = `${rect.top - tooltip.offsetHeight - 8}px`;
-    
-    // Animate in
-    setTimeout(() => {
-        tooltip.style.opacity = '1';
-        tooltip.style.transform = 'translateY(0)';
-    }, 10);
-}
-
-function hideVerifiedTooltip() {
-    const existingTooltip = document.getElementById('cc-verified-tooltip');
-    if (existingTooltip) {
-        existingTooltip.style.opacity = '0';
-        existingTooltip.style.transform = 'translateY(-5px)';
-        setTimeout(() => {
-            if (existingTooltip.parentElement) {
-                existingTooltip.remove();
-            }
-        }, 200);
-    }
-}
+// Removed showVerifiedTooltip and hideVerifiedTooltip functions - no longer needed
 
 function injectLoginAlert() {
     const targetDiv = document.querySelector('.box');
@@ -5229,59 +5147,153 @@ function injectRefreshTweaksButton() {
 
 function initObserver() {
     let attempts = 0;
-    const maxAttempts = 30;
+    const maxAttempts = 60; // Increased from 30 to 60 for better reliability
+    let tweaksApplied = false;
 
-    applyDarkMode();
-    applyAccentColor();
+    // Apply core styles immediately (these don't depend on DOM elements)
+    try {
+        applyDarkMode();
+        applyAccentColor();
+    } catch (error) {
+        console.warn('Failed to apply core styles:', error);
+    }
+
+    // Initialize cloud sync in background
     getCloudSession().then((session) => {
         if (session?.access_token) {
             pullSettingsFromCloud().catch(() => {});
             startAutoCloudSync();
         }
+    }).catch(error => {
+        console.warn('Cloud session initialization failed:', error);
     });
 
-    replaceClassChartsLogo();
-    applyImprovedUI(getImprovedUIStatus());
-    applyHomeworkRedesign();
-    applyCustomProfilePhoto();
-    updateCustomIcons();
+    // Apply initial tweaks that don't require specific DOM elements
+    try {
+        replaceClassChartsLogo();
+        applyImprovedUI(getImprovedUIStatus());
+        applyHomeworkRedesign();
+        applyCustomProfilePhoto();
+        updateCustomIcons();
+    } catch (error) {
+        console.warn('Failed to apply initial tweaks:', error);
+    }
 
     const interval = setInterval(() => {
-        const menuInjected = document.querySelector('.cc-improver-header');
+        try {
+            const menuInjected = document.querySelector('.cc-improver-header');
 
-        updateDefaultIcons();
-        updateCustomIcons();
-        injectHomeworkDateHint();
-        applyHomeworkRedesign();
+            // Update dynamic content on each attempt
+            updateDefaultIcons();
+            updateCustomIcons();
+            injectHomeworkDateHint();
+            applyHomeworkRedesign();
 
-        if (!menuInjected) {
-            if (createMenuItem()) {
-                checkAndShowModals();
+            // Create menu item if not already injected
+            if (!menuInjected) {
+                try {
+                    if (createMenuItem()) {
+                        checkAndShowModals();
+                    }
+                } catch (error) {
+                    console.warn('Failed to create menu item:', error);
+                }
             }
+
+            // Remove disabled features
+            if (!isFeatureEnabledByKey(FEATURE_CONTACT_LINK_ENABLED_KEY, true)) {
+                document.querySelectorAll('.cc-improver-contact-link').forEach(el => el.remove());
+            }
+            if (!isFeatureEnabledByKey(FEATURE_CODE_WARNING_ENABLED_KEY, true)) {
+                document.querySelectorAll('.cc-improver-code-warning').forEach(el => el.remove());
+            }
+            if (!isFeatureEnabledByKey(FEATURE_MESSAGES_PLACEHOLDER_ENABLED_KEY, true)) {
+                document.querySelectorAll('.cc-improver-messages-guide').forEach(el => el.remove());
+            }
+            if (!isFeatureEnabledByKey(FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, true)) {
+                document.querySelectorAll('.cc-improver-announcements-desc').forEach(el => el.remove());
+            }
+            if (!isFeatureEnabledByKey(FEATURE_REFRESH_TWEAKS_ENABLED_KEY, true)) {
+                document.querySelectorAll('.cc-improver-refresh-button').forEach(el => el.remove());
+            }
+            if (!isFeatureEnabledByKey(FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, true)) {
+                document.querySelectorAll('.cc-improver-detention-success').forEach(el => el.remove());
+            }
+
+            // Apply enabled features with error handling
+            try {
+                if (isFeatureEnabledByKey(FEATURE_REPORT_CONCERN_ENABLED_KEY, true)) {
+                    injectReportConcernWarning();
+                } else {
+                    document.querySelectorAll('.cc-improver-concern-warning').forEach(el => el.remove());
+                }
+            } catch (error) {
+                console.warn('Failed to apply report concern warning:', error);
+            }
+
+            try {
+                if (isFeatureEnabledByKey(FEATURE_CONTACT_LINK_ENABLED_KEY, true)) {
+                    injectContactLink();
+                }
+            } catch (error) {
+                console.warn('Failed to inject contact link:', error);
+            }
+
+            try {
+                if (isFeatureEnabledByKey(FEATURE_CODE_WARNING_ENABLED_KEY, true)) {
+                    injectCodeWarning();
+                }
+            } catch (error) {
+                console.warn('Failed to inject code warning:', error);
+            }
+
+            if (false) {
+                try {
+                    injectMessagesPlaceholderContent();
+                } catch (error) {
+                    console.warn('Failed to inject messages placeholder:', error);
+                }
+            }
+
+            try {
+                if (isFeatureEnabledByKey(FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, true)) {
+                    injectAnnouncementsDescription();
+                }
+            } catch (error) {
+                console.warn('Failed to inject announcements description:', error);
+            }
+
+            try {
+                if (isFeatureEnabledByKey(FEATURE_REFRESH_TWEAKS_ENABLED_KEY, true)) {
+                    injectRefreshTweaksButton();
+                }
+            } catch (error) {
+                console.warn('Failed to inject refresh tweaks button:', error);
+            }
+
+            try {
+                if (isFeatureEnabledByKey(FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, true)) {
+                    injectDetentionCelebration();
+                }
+            } catch (error) {
+                console.warn('Failed to inject detention celebration:', error);
+            }
+
+            // Mark tweaks as applied once menu is successfully injected
+            if (menuInjected && !tweaksApplied) {
+                tweaksApplied = true;
+                console.log('ClassCharts Improver: All tweaks applied successfully');
+            }
+
+        } catch (error) {
+            console.warn('Error during tweak application cycle:', error);
         }
-
-        if (!isFeatureEnabledByKey(FEATURE_CONTACT_LINK_ENABLED_KEY, true)) document.querySelectorAll('.cc-improver-contact-link').forEach(el => el.remove());
-        if (!isFeatureEnabledByKey(FEATURE_CODE_WARNING_ENABLED_KEY, true)) document.querySelectorAll('.cc-improver-code-warning').forEach(el => el.remove());
-        if (!isFeatureEnabledByKey(FEATURE_MESSAGES_PLACEHOLDER_ENABLED_KEY, true)) document.querySelectorAll('.cc-improver-messages-guide').forEach(el => el.remove());
-        if (!isFeatureEnabledByKey(FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, true)) document.querySelectorAll('.cc-improver-announcements-desc').forEach(el => el.remove());
-        if (!isFeatureEnabledByKey(FEATURE_REFRESH_TWEAKS_ENABLED_KEY, true)) document.querySelectorAll('.cc-improver-refresh-button').forEach(el => el.remove());
-        if (!isFeatureEnabledByKey(FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, true)) document.querySelectorAll('.cc-improver-detention-success').forEach(el => el.remove());
-
-        if (isFeatureEnabledByKey(FEATURE_REPORT_CONCERN_ENABLED_KEY, true)) injectReportConcernWarning();
-        else document.querySelectorAll('.cc-improver-concern-warning').forEach(el => el.remove());
-
-        if (isFeatureEnabledByKey(FEATURE_CONTACT_LINK_ENABLED_KEY, true)) injectContactLink();
-        if (isFeatureEnabledByKey(FEATURE_CODE_WARNING_ENABLED_KEY, true)) injectCodeWarning();
-        if (false) injectMessagesPlaceholderContent();
-        if (isFeatureEnabledByKey(FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, true)) injectAnnouncementsDescription();
-        if (isFeatureEnabledByKey(FEATURE_REFRESH_TWEAKS_ENABLED_KEY, true)) injectRefreshTweaksButton();
-        if (isFeatureEnabledByKey(FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, true)) injectDetentionCelebration();
-        
-        // Always inject verified school icons (can't be turned off)
-        injectVerifiedSchoolIcons();
 
         if (attempts >= maxAttempts) {
             clearInterval(interval);
+            if (!tweaksApplied) {
+                console.warn('ClassCharts Improver: Some tweaks may not have been applied due to timeout');
+            }
         }
         attempts++;
     }, 500);
