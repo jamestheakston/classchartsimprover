@@ -1,7 +1,7 @@
-name: Issue Notifier
+name: Issue Assistant
 on:
   issues:
-    types: [opened]
+    types: [opened, closed]
 
 jobs:
   handle-issue:
@@ -14,34 +14,55 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      - name: Auto-Respond as App
+      - name: Process Issue
         uses: actions/github-script@v7
         with:
           github-token: ${{ steps.generate_token.outputs.token }}
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: "Thanks for reporting this issue to ClassCharts Improver! An email notification has automatically been sent to James, and he'll get back to you soon."
-            })
+            const { action, issue } = context.payload;
+            
+            if (action === 'opened') {
+              // Apply the bug label
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: ['bug']
+              });
 
-      - name: Send Email Notification
+              // Post the opening comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: "Thanks for reporting this issue to ClassCharts Improver! I've automatically tagged this as a bug and notified James. We'll get back to you shortly."
+              });
+            }
+
+            if (action === 'closed') {
+              // Post the improved closing comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: "Thank you for contributing! Your input helps us squash bugs and makes the extension better for the entire community.\n\nWe’d love to hear about your experience with our support process. You can leave a [Feedback review on our website](https://classchartsimprover.pages.dev/gitissuefeedback.html) to help us improve."
+              });
+            }
+
+      - name: Send Email Notification (Opened Only)
+        if: github.event.action == 'opened'
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.MAIL_SERVER }}
           server_port: 465
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "ClassCharts Improver: New Issue #${{ github.event.issue.number }}"
+          subject: "ClassCharts Improver: New Bug Reported (#${{ github.event.issue.number }})"
           to: ${{ secrets.MY_EMAIL_ADDRESS }}
-          from: ClassCharts Improver Issues <${{ secrets.MAIL_USERNAME }}>
+          from: GitHub Bot <${{ secrets.MAIL_USERNAME }}>
           body: |
-            A new issue was opened in ClassCharts Improver.
+            A new issue has been opened and labeled as a bug.
             
             Title: ${{ github.event.issue.title }}
-            Opened by: ${{ github.event.issue.user.login }}
+            User: ${{ github.event.issue.user.login }}
             Link: ${{ github.event.issue.html_url }}
-            
-            Description:
-            ${{ github.event.issue.body }}
