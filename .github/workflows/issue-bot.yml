@@ -1,0 +1,47 @@
+name: Issue Notifier
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  handle-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate App Token
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Auto-Respond as App
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.generate_token.outputs.token }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "Thanks for reporting this issue to ClassCharts Improver! I've sent an email notification to James, and he'll get back to you soon."
+            })
+
+      - name: Send Email Notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "ClassCharts Improver: New Issue #${{ github.event.issue.number }}"
+          to: ${{ secrets.MY_EMAIL_ADDRESS }}
+          from: GitHub Bot <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            A new issue was opened in ClassCharts Improver.
+            
+            Title: ${{ github.event.issue.title }}
+            Opened by: ${{ github.event.issue.user.login }}
+            Link: ${{ github.event.issue.html_url }}
+            
+            Description:
+            ${{ github.event.issue.body }}
