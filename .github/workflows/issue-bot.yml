@@ -23,7 +23,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: "Thanks for reporting this issue to ClassCharts Improver! I've sent an email notification to James, and he'll get back to you soon."
+              body: "Thanks for reporting this issue to ClassCharts Improver! An email notification has automatically been sent to James, and he'll get back to you soon."
             })
 
       - name: Send Email Notification
@@ -35,7 +35,7 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: "ClassCharts Improver: New Issue #${{ github.event.issue.number }}"
           to: ${{ secrets.MY_EMAIL_ADDRESS }}
-          from: GitHub Bot <${{ secrets.MAIL_USERNAME }}>
+          from: ClassCharts Improver Issues <${{ secrets.MAIL_USERNAME }}>
           body: |
             A new issue was opened in ClassCharts Improver.
             
