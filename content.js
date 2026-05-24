@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_7';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_8';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -30,6 +30,9 @@ const FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY = 'classcharts_improver_feature_sho
 const FEATURE_CLOUD_SYNC_ENABLED_KEY = 'classcharts_improver_feature_cloud_sync_enabled';
 const FEATURE_DEVELOPER_PREVIEW_ALERT_ENABLED_KEY = 'classcharts_improver_feature_developer_preview_alert_enabled';
 const FEATURE_HIDE_ENCRYPTION_WARNING_KEY = 'classcharts_improver_feature_hide_encryption_warning_enabled';
+const BETA_CARD_DISMISSED_KEY = 'classcharts_improver_beta_card_dismissed';
+const BETA_PARTNER_CODE_KEY = 'classcharts_improver_beta_partner_code';
+const BETA_USER_NAME_KEY = 'classcharts_improver_beta_user_name';
 
 const DARK_MODE_ENABLED_KEY = 'classcharts_improver_dark_mode_enabled';
 const SYNC_IMPROVED_UI_ENABLED_KEY = 'classcharts_improver_sync_improved_ui_enabled';
@@ -831,6 +834,169 @@ function hideAuthInProgressModal() {
         authInProgressModal.remove();
         authInProgressModal = null;
     }
+}
+
+function showBetaCard() {
+    // Check if user has already dismissed the beta card
+    if (localStorage.getItem(BETA_CARD_DISMISSED_KEY) === 'true') {
+        return;
+    }
+
+    // Find the Home menu item
+    const menuItems = document.querySelectorAll('.desktop-drawer-pupil-menu-item');
+    const homeItem = Array.from(menuItems).find(item => {
+        const textSpan = item.querySelector('.MuiListItemText-primary');
+        return textSpan && (textSpan.textContent === 'Home' || textSpan.textContent === 'Overview');
+    });
+
+    if (!homeItem) {
+        // Try again later if menu not loaded yet
+        setTimeout(showBetaCard, 1000);
+        return;
+    }
+
+    // Check if beta card already exists
+    if (document.querySelector('.cc-beta-card')) {
+        return;
+    }
+
+    // Create the beta card
+    const betaCard = document.createElement('div');
+    betaCard.className = 'cc-beta-card';
+    betaCard.innerHTML = `
+        <div class="cc-beta-card-content">
+            <div class="cc-beta-card-icon">
+                <img src="${getAssetUrl('users.svg')}" alt="users icon">
+            </div>
+            <div class="cc-beta-card-text">
+                <div class="cc-beta-card-title">Beta Program</div>
+                <div class="cc-beta-card-description">Test new features & give feedback</div>
+                <a href="https://classchartsimprover.pages.dev/beta" target="_blank" class="cc-beta-card-link">Join →</a>
+            </div>
+            <button class="cc-beta-card-dismiss" title="Don't show this again">×</button>
+        </div>
+    `;
+
+    // Add styles if not already added
+    if (!document.getElementById('cc-beta-card-styles')) {
+        const style = document.createElement('style');
+        style.id = 'cc-beta-card-styles';
+        style.textContent = `
+            .cc-beta-card {
+                margin: 4px 12px;
+                border-radius: 8px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+                overflow: hidden;
+                animation: slideDown 0.3s ease-out;
+            }
+            
+            .cc-beta-card-content {
+                display: flex;
+                align-items: center;
+                padding: 8px 12px;
+                gap: 8px;
+                position: relative;
+            }
+            
+            .cc-beta-card-icon {
+                flex-shrink: 0;
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 6px;
+            }
+            
+            .cc-beta-card-icon img {
+                width: 16px;
+                height: 16px;
+                filter: brightness(0) invert(1);
+            }
+            
+            .cc-beta-card-text {
+                flex: 1;
+                min-width: 0;
+            }
+            
+            .cc-beta-card-title {
+                font-size: 12px;
+                font-weight: 600;
+                color: white;
+                margin-bottom: 2px;
+            }
+            
+            .cc-beta-card-description {
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.9);
+                line-height: 1.3;
+                margin-bottom: 2px;
+            }
+            
+            .cc-beta-card-link {
+                display: inline-block;
+                font-size: 11px;
+                color: white;
+                text-decoration: none;
+                font-weight: 500;
+                transition: opacity 0.2s;
+            }
+            
+            .cc-beta-card-link:hover {
+                opacity: 0.8;
+                text-decoration: underline;
+            }
+            
+            .cc-beta-card-dismiss {
+                flex-shrink: 0;
+                background: rgba(255, 255, 255, 0.2);
+                border: none;
+                color: white;
+                font-size: 14px;
+                cursor: pointer;
+                padding: 2px 6px;
+                border-radius: 4px;
+                transition: all 0.2s;
+                line-height: 1;
+            }
+            
+            .cc-beta-card-dismiss:hover {
+                background: rgba(255, 255, 255, 0.3);
+            }
+            
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            .cc-improver-dark-mode .cc-beta-card {
+                background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%);
+                box-shadow: 0 2px 8px rgba(76, 29, 149, 0.4);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Insert before the Home menu item
+    homeItem.parentNode.insertBefore(betaCard, homeItem);
+
+    // Handle dismiss button
+    const dismissBtn = betaCard.querySelector('.cc-beta-card-dismiss');
+    dismissBtn.addEventListener('click', () => {
+        localStorage.setItem(BETA_CARD_DISMISSED_KEY, 'true');
+        betaCard.style.animation = 'slideDown 0.3s ease-out reverse';
+        setTimeout(() => {
+            betaCard.remove();
+        }, 300);
+    });
 }
 
 async function getCloudSession() {
@@ -2180,6 +2346,13 @@ function showAllSettingsModal() {
             items: [
                 { id: 'cc-open-about-modal', label: 'About', icon: getAssetUrl('info.svg'), color: '#F3E8FF', textColor: '#7E22CE', borderColor: '#7E22CE' },
             ]
+        },
+        {
+            title: 'Beta Program',
+            description: 'Join the beta testing program',
+            items: [
+                { id: 'cc-open-beta-modal', label: 'Beta Access', icon: getAssetUrl('users.svg'), color: '#FEE2E2', textColor: '#DC2626', borderColor: '#DC2626' },
+            ]
         }
     ];
 
@@ -2476,6 +2649,203 @@ function showAllSettingsModal() {
         closeModal();
         showAboutModal();
     });
+
+    document.getElementById('cc-open-beta-modal').addEventListener('click', () => {
+        closeModal();
+        showBetaModal();
+    });
+}
+
+function showBetaModal() {
+    const savedCode = localStorage.getItem(BETA_PARTNER_CODE_KEY);
+    const savedName = localStorage.getItem(BETA_USER_NAME_KEY);
+
+    // If user already has a valid code, show beta status
+    if (savedCode && savedName) {
+        showBetaStatusModal(savedName);
+        return;
+    }
+
+    // Otherwise, show partner code input modal
+    const bodyHtml = `
+        <div class="cc-settings-card-soft" style="margin-bottom: 20px;">
+            <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #111827; font-weight: 600;">Enter Partner Code</h3>
+            <p style="font-size: 0.9rem; color: #6b7280; margin: 0; line-height: 1.4;">
+                Enter your partner code to join the ClassCharts Improver beta program.
+            </p>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 8px;">Partner Code (6 digits)</label>
+            <div id="cc-beta-code-inputs" style="display: flex; gap: 8px; justify-content: center;">
+                ${[0, 1, 2, 3, 4, 5].map(i => `
+                    <input type="text" id="cc-beta-digit-${i}" maxlength="1" style="
+                        width: 48px;
+                        height: 56px;
+                        padding: 0;
+                        border: 2px solid #d1d5db;
+                        border-radius: 8px;
+                        font-size: 24px;
+                        font-weight: 600;
+                        text-align: center;
+                        font-family: monospace;
+                        box-sizing: border-box;
+                        transition: border-color 0.2s, box-shadow 0.2s;
+                    ">
+                `).join('')}
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px; padding: 12px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+            <p style="font-size: 13px; color: #92400e; margin: 0; line-height: 1.4;">
+                <strong>⚠️ Important:</strong> This is your unique code for your account. Do not share it with anyone - it's like a password.
+            </p>
+        </div>
+
+        <div style="margin-bottom: 20px; text-align: center;">
+            <p style="font-size: 13px; color: #6b7280; margin: 0;">
+                Don't have a partner code? <a href="https://classchartsimprover.pages.dev/beta" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: 500;">Get one here →</a>
+            </p>
+        </div>
+
+        <div class="cc-settings-actions" style="margin-top: 24px;">
+            <button id="cc-beta-cancel-btn" class="cc-btn cc-btn-secondary">Cancel</button>
+            <button id="cc-beta-submit-btn" class="cc-btn cc-btn-primary">Submit</button>
+        </div>
+    `;
+
+    const { closeModal } = createBaseModal('cc-beta-modal', 'Beta Access', bodyHtml, '400px');
+
+    // Setup OTP-style input handling
+    const digitInputs = [];
+    for (let i = 0; i < 6; i++) {
+        const input = document.getElementById(`cc-beta-digit-${i}`);
+        digitInputs.push(input);
+
+        input.addEventListener('input', (e) => {
+            const value = e.target.value;
+            if (!/^\d$/.test(value)) {
+                e.target.value = '';
+                return;
+            }
+            if (value && i < 5) {
+                digitInputs[i + 1].focus();
+            }
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !e.target.value && i > 0) {
+                digitInputs[i - 1].focus();
+            }
+        });
+
+        input.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pastedData = e.clipboardData.getData('text').trim();
+            if (/^\d{6}$/.test(pastedData)) {
+                pastedData.split('').forEach((digit, index) => {
+                    if (index < 6) {
+                        digitInputs[index].value = digit;
+                    }
+                });
+                digitInputs[5].focus();
+            }
+        });
+    }
+
+    document.getElementById('cc-beta-cancel-btn').addEventListener('click', closeModal);
+
+    document.getElementById('cc-beta-submit-btn').addEventListener('click', async () => {
+        const code = digitInputs.map(input => input.value).join('');
+
+        if (!code) {
+            showInfoModal('Error', 'Please enter a partner code', 'error');
+            return;
+        }
+
+        if (!/^\d{6}$/.test(code)) {
+            showInfoModal('Error', 'Partner code must be exactly 6 digits', 'error');
+            return;
+        }
+
+        // Query Supabase for the partner code
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/partnercodes?code=eq.${encodeURIComponent(code)}&select=*`, {
+                headers: {
+                    'apikey': 'sb_publishable_a7GOW5zpj5YQp-nXJ6KyQA_NGkNyWFh',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data || data.length === 0) {
+                showInfoModal('Error', 'Invalid partner code. Please check your code and try again.', 'error');
+                return;
+            }
+
+            const partnerData = data[0];
+            const name = partnerData.name || 'Beta Tester';
+
+            // Save to localStorage
+            localStorage.setItem(BETA_PARTNER_CODE_KEY, code);
+            localStorage.setItem(BETA_USER_NAME_KEY, name);
+
+            closeModal();
+            showBetaStatusModal(name);
+            showInfoModal('Success', `Welcome to the beta program, ${name}!`, 'success');
+
+        } catch (error) {
+            console.error('Error validating partner code:', error);
+            showInfoModal('Error', 'Failed to validate partner code. Please try again.', 'error');
+        }
+    });
+}
+
+function showBetaStatusModal(name) {
+    const bodyHtml = `
+        <div class="cc-settings-card-soft" style="margin-bottom: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h3 style="margin: 0 0 8px 0; font-size: 1.2rem; color: white; font-weight: 600;">Hi, ${name}!</h3>
+            <p style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.9); margin: 0; line-height: 1.4;">
+                You're part of the ClassCharts Improver beta program.
+            </p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <p style="font-size: 14px; color: #6b7280; margin-bottom: 16px; line-height: 1.5;">
+                We're working hard on beta feedback. Check back soon for new features!
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button disabled class="cc-btn cc-btn-secondary" style="opacity: 0.6; cursor: not-allowed;">
+                    <span style="display: flex; align-items: center; gap: 8px;">
+                        <span>🚀</span>
+                        <span>Early Access Features</span>
+                    </span>
+                </button>
+                <button disabled class="cc-btn cc-btn-secondary" style="opacity: 0.6; cursor: not-allowed;">
+                    <span style="display: flex; align-items: center; gap: 8px;">
+                        <span>💬</span>
+                        <span>Beta Feedback Channel</span>
+                    </span>
+                </button>
+                <button disabled class="cc-btn cc-btn-secondary" style="opacity: 0.6; cursor: not-allowed;">
+                    <span style="display: flex; align-items: center; gap: 8px;">
+                        <span>🎁</span>
+                        <span>Exclusive Rewards</span>
+                    </span>
+                </button>
+            </div>
+        </div>
+
+        <div class="cc-settings-actions" style="margin-top: 24px;">
+            <button id="cc-beta-status-close-btn" class="cc-btn cc-btn-primary">Close</button>
+        </div>
+    `;
+
+    const { closeModal } = createBaseModal('cc-beta-status-modal', 'Beta Status', bodyHtml, '400px');
+
+    document.getElementById('cc-beta-status-close-btn').addEventListener('click', closeModal);
 }
 
 function showFeatureControlsModal() {
@@ -4478,7 +4848,7 @@ function updateReportConcernIcon() {
                 
                 // Replace with custom icon
                 const customIcon = document.createElement('img');
-                customIcon.src = getAssetUrl('alert-octagon.svg');
+                customIcon.src = getAssetUrl('alert-triangle.svg');
                 customIcon.alt = 'Report concern';
                 customIcon.style.cssText = `
                     width: 24px;
@@ -5307,6 +5677,9 @@ if (isFeatureEnabledByKey(FEATURE_LOGIN_ALERT_ENABLED_KEY, true)) {
 
 
 injectDeveloperPreviewAlert();
+
+// Show beta program card
+showBetaCard();
 
 // Setup James Auth listener for global message handling
 setupJamesAuthListener();
