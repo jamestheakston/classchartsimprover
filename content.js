@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_9';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_8_0';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -4589,7 +4589,7 @@ function showDeveloperConsole() {
     document.getElementById('cc-console-close-btn').addEventListener('click', closeModal);
 }
 
-function exportAllDeveloperData() {
+async function exportAllDeveloperData() {
     const data = {
         timestamp: new Date().toISOString(),
         extension: {
@@ -4601,56 +4601,80 @@ function exportAllDeveloperData() {
         chromeStorage: {},
         features: {},
         pageInfo: {
-            url: window.location.href,
             title: document.title,
             userAgent: navigator.userAgent
         }
     };
     
-    // Collect localStorage data
+    // Collect localStorage data (excluding sensitive beta info)
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        data.localStorage[key] = localStorage.getItem(key);
+        if (key !== 'classcharts_improver_beta_user_name' && key !== 'classcharts_improver_beta_partner_code') {
+            data.localStorage[key] = localStorage.getItem(key);
+        }
     }
     
     // Collect chrome storage data
-    chrome.storage.local.get(null, (result) => {
-        data.chromeStorage = result;
-        
-        // Collect feature states
-        const featureKeys = [
-            'classcharts_improver_feature_improved_ui_enabled',
-            'classcharts_improver_feature_personal_notes_enabled',
-            'classcharts_improver_feature_goals_enabled',
-            'classcharts_improver_feature_profile_photo_enabled',
-            'classcharts_improver_feature_accent_color_enabled',
-            'classcharts_improver_feature_report_concern_enabled',
-            'classcharts_improver_feature_contact_link_enabled',
-            'classcharts_improver_feature_code_warning_enabled',
-            'classcharts_improver_feature_messages_placeholder_enabled',
-            'classcharts_improver_feature_announcements_description_enabled',
-            'classcharts_improver_feature_refresh_tweaks_enabled',
-            'classcharts_improver_feature_detention_celebration_enabled',
-            'classcharts_improver_feature_login_alert_enabled',
-            'classcharts_improver_feature_prompt_review_enabled',
-            'classcharts_improver_feature_cloud_sync_enabled',
-            'classcharts_improver_feature_developer_preview_alert_enabled',
-            'classcharts_improver_feature_show_safety_badges_enabled'
-        ];
-        
-        featureKeys.forEach(key => {
-            data.features[key] = localStorage.getItem(key) === 'true';
-        });
-        
-        // Download the data
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `classcharts-improver-debug-${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+    const result = await new Promise((resolve) => {
+        chrome.storage.local.get(null, resolve);
     });
+    data.chromeStorage = result;
+    
+    // Collect feature states
+    const featureKeys = [
+        'classcharts_improver_feature_improved_ui_enabled',
+        'classcharts_improver_feature_personal_notes_enabled',
+        'classcharts_improver_feature_goals_enabled',
+        'classcharts_improver_feature_profile_photo_enabled',
+        'classcharts_improver_feature_accent_color_enabled',
+        'classcharts_improver_feature_report_concern_enabled',
+        'classcharts_improver_feature_contact_link_enabled',
+        'classcharts_improver_feature_code_warning_enabled',
+        'classcharts_improver_feature_messages_placeholder_enabled',
+        'classcharts_improver_feature_announcements_description_enabled',
+        'classcharts_improver_feature_refresh_tweaks_enabled',
+        'classcharts_improver_feature_detention_celebration_enabled',
+        'classcharts_improver_feature_login_alert_enabled',
+        'classcharts_improver_feature_prompt_review_enabled',
+        'classcharts_improver_feature_cloud_sync_enabled',
+        'classcharts_improver_feature_developer_preview_alert_enabled',
+        'classcharts_improver_feature_show_safety_badges_enabled'
+    ];
+    
+    featureKeys.forEach(key => {
+        data.features[key] = localStorage.getItem(key) === 'true';
+    });
+    
+    // Add beta enabled status
+    data.isbetaenabled = !!localStorage.getItem('classcharts_improver_beta_partner_code');
+    
+    // Add country code
+    data.countryCode = navigator.language.split('-')[1] || 'unknown';
+    
+    // Add install date
+    let installDate = 'unknown';
+    try {
+        if (chrome.management && chrome.management.getSelf) {
+            const info = await new Promise((resolve) => {
+                chrome.management.getSelf(resolve);
+            });
+            if (info && info.installType) {
+                installDate = info.installType;
+            }
+        }
+    } catch (e) {
+        installDate = 'unknown';
+    }
+    data.installDate = installDate;
+    
+    // Download the data
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `classcharts-improver-debug-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 function resetAllFeatures() {
