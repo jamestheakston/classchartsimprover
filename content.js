@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_8';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_7_9';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -4679,41 +4679,86 @@ function resetAllFeatures() {
     });
 }
 
-function showDebugInformation() {
-    const debugInfo = {
-        extension: {
-            name: chrome.runtime.getManifest().name,
-            version: chrome.runtime.getManifest().version,
-            manifestVersion: chrome.runtime.getManifest().manifest_version
-        },
-        page: {
-            url: window.location.href,
-            title: document.title,
-            domain: window.location.hostname,
-            path: window.location.pathname
-        },
-        browser: {
-            userAgent: navigator.userAgent,
-            language: navigator.language,
-            platform: navigator.platform,
-            cookieEnabled: navigator.cookieEnabled
-        },
-        storage: {
-            localStorageSize: localStorage.length,
-            chromeStorageKeys: Object.keys(chrome.storage.local ? {} : {}),
-            sessionStorageSize: sessionStorage.length
-        },
-        performance: {
-            loadTime: performance.timing.loadEventEnd - performance.timing.navigationStart,
-            domReady: performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart,
-            now: performance.now()
-        },
-        classcharts: {
-            isLoggedIn: !!document.querySelector('.logout-button'),
-            hasNavigation: !!document.querySelector('.MuiToolbar-root'),
-            hasHomework: !!document.querySelector('.homework-card'),
-            hasBehavior: !!document.querySelector('.behaviour-points-section')
+async function showDebugInformation() {
+    const betaEnabled = !!localStorage.getItem(BETA_PARTNER_CODE_KEY);
+    const betaUserName = localStorage.getItem(BETA_USER_NAME_KEY);
+    
+    // Get cloud sync status and auth method
+    let cloudSyncEnabled = false;
+    let authMethod = 'none';
+    if (isCloudSyncEnabled()) {
+        cloudSyncEnabled = true;
+        // Check for James Auth
+        const result = await new Promise((resolve) => {
+            chrome.storage.local.get([JAMES_AUTH_USER_KEY], resolve);
+        });
+        if (result[JAMES_AUTH_USER_KEY]?.isAuthenticated) {
+            authMethod = 'james_auth';
+        } else {
+            authMethod = 'supabase';
         }
+    }
+    
+    // Get all feature statuses
+    const features = {
+        improved_ui: getStoredBoolean(FEATURE_IMPROVED_UI_ENABLED_KEY, true),
+        custom_positive_icon: getStoredBoolean(FEATURE_CUSTOM_POSITIVE_ICON_ENABLED_KEY, true),
+        notes: getStoredBoolean(FEATURE_NOTES_ENABLED_KEY, true),
+        goals: getStoredBoolean(FEATURE_GOALS_ENABLED_KEY, true),
+        profile_photo: getStoredBoolean(FEATURE_PROFILE_PHOTO_ENABLED_KEY, true),
+        accent_color: getStoredBoolean(FEATURE_ACCENT_COLOR_ENABLED_KEY, true),
+        report_concern: getStoredBoolean(FEATURE_REPORT_CONCERN_ENABLED_KEY, true),
+        contact_link: getStoredBoolean(FEATURE_CONTACT_LINK_ENABLED_KEY, true),
+        code_warning: getStoredBoolean(FEATURE_CODE_WARNING_ENABLED_KEY, true),
+        messages_placeholder: getStoredBoolean(FEATURE_MESSAGES_PLACEHOLDER_ENABLED_KEY, true),
+        announcements_description: getStoredBoolean(FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, true),
+        refresh_tweaks: getStoredBoolean(FEATURE_REFRESH_TWEAKS_ENABLED_KEY, true),
+        detention_celebration: getStoredBoolean(FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, true),
+        login_alert: getStoredBoolean(FEATURE_LOGIN_ALERT_ENABLED_KEY, true),
+        prompt_review: getStoredBoolean(FEATURE_PROMPT_REVIEW_ENABLED_KEY, true),
+        show_safety_badges: getStoredBoolean(FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY, true),
+        cloud_sync: getStoredBoolean(FEATURE_CLOUD_SYNC_ENABLED_KEY, true),
+        developer_preview_alert: getStoredBoolean(FEATURE_DEVELOPER_PREVIEW_ALERT_ENABLED_KEY, true),
+        hide_encryption_warning: getStoredBoolean(FEATURE_HIDE_ENCRYPTION_WARNING_KEY, true)
+    };
+    
+    // Get country code from language or timezone
+    const countryCode = navigator.language.split('-')[1] || 'unknown';
+    
+    // Get OS from userAgent
+    const os = navigator.platform || 'unknown';
+    
+    // Get last error
+    const lastError = chrome.runtime.lastError ? chrome.runtime.lastError.message : null;
+    
+    // Get install date (approximate from chrome.management if available)
+    let installDate = 'unknown';
+    try {
+        if (chrome.management && chrome.management.getSelf) {
+            const info = await new Promise((resolve) => {
+                chrome.management.getSelf(resolve);
+            });
+            if (info && info.installType) {
+                installDate = info.installType;
+            }
+        }
+    } catch (e) {
+        installDate = 'unknown';
+    }
+    
+    const debugInfo = {
+        userAgent: navigator.userAgent,
+        betaEnabled: betaEnabled,
+        betaUserName: betaUserName || null,
+        buildType: chrome.runtime.getManifest().version.includes('-') ? 'development' : 'production',
+        version: chrome.runtime.getManifest().version,
+        installDate: installDate,
+        cloudSyncEnabled: cloudSyncEnabled,
+        authMethod: authMethod,
+        featuresEnabled: features,
+        countryCode: countryCode,
+        os: os,
+        lastError: lastError
     };
     
     const bodyHtml = `
