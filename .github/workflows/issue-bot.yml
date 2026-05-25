@@ -35,7 +35,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                body: "Thanks for reporting this issue to ClassCharts Improver! I've automatically tagged this as a bug and notified James. We'll get back to you shortly."
+                body: "Thanks for reporting this to ClassCharts Improver! I’ve logged this as a bug and alerted James. To help us investigate, please attach your debug file—here is a [guide on how to retrieve it](https://classchartsimprover.pages.dev/debugfile)."
               });
             }
 
