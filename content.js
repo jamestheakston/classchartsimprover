@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_8_0';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_8_1';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -2802,6 +2802,37 @@ function showBetaModal() {
     });
 }
 
+async function checkBetaCodeStatus(closeModal, interval = null) {
+    const savedCode = localStorage.getItem(BETA_PARTNER_CODE_KEY);
+    
+    if (!savedCode) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/partnercodes?code=eq.${encodeURIComponent(savedCode)}&select=*`, {
+            headers: {
+                'apikey': 'sb_publishable_a7GOW5zpj5YQp-nXJ6KyQA_NGkNyWFh',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        // If code no longer exists in Supabase, redirect to suspended page
+        if (!response.ok || !data || data.length === 0) {
+            if (interval) {
+                clearInterval(interval);
+            }
+            localStorage.removeItem(BETA_PARTNER_CODE_KEY);
+            localStorage.removeItem(BETA_USER_NAME_KEY);
+            window.location.href = 'https://classchartsimprover.pages.dev/beta/suspended?ref=extension';
+        }
+    } catch (error) {
+        console.error('Error checking beta code status:', error);
+    }
+}
+
 function showBetaStatusModal(name) {
     const bodyHtml = `
         <div class="cc-settings-card-soft" style="margin-bottom: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
@@ -2812,33 +2843,16 @@ function showBetaStatusModal(name) {
         </div>
 
         <div style="margin-bottom: 20px;">
-            <p style="font-size: 14px; color: #6b7280; margin-bottom: 16px; line-height: 1.5;">
-                We're working hard on beta feedback. Check back soon for new features!
+            <p style="font-size: 14px; color: #6b7280; margin-bottom: 16px; line-height: 1.5; text-align: center;">
+                No new features to test right now. Try again later.
             </p>
-
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <button disabled class="cc-btn cc-btn-secondary" style="opacity: 0.6; cursor: not-allowed;">
-                    <span style="display: flex; align-items: center; gap: 8px;">
-                        <span>🚀</span>
-                        <span>Early Access Features</span>
-                    </span>
-                </button>
-                <button disabled class="cc-btn cc-btn-secondary" style="opacity: 0.6; cursor: not-allowed;">
-                    <span style="display: flex; align-items: center; gap: 8px;">
-                        <span>💬</span>
-                        <span>Beta Feedback Channel</span>
-                    </span>
-                </button>
-                <button disabled class="cc-btn cc-btn-secondary" style="opacity: 0.6; cursor: not-allowed;">
-                    <span style="display: flex; align-items: center; gap: 8px;">
-                        <span>🎁</span>
-                        <span>Exclusive Rewards</span>
-                    </span>
-                </button>
-            </div>
+            <p style="font-size: 13px; color: #6b7280; margin-bottom: 16px; line-height: 1.5; text-align: center;">
+                You also have access to the beta portal at <a href="https://classchartsimprover.pages.dev/beta" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: 500;">classchartsimprover.pages.dev/beta</a>
+            </p>
         </div>
 
-        <div class="cc-settings-actions" style="margin-top: 24px;">
+        <div class="cc-settings-actions" style="margin-top: 24px; display: flex; gap: 12px;">
+            <button id="cc-beta-status-logout-btn" class="cc-btn cc-btn-secondary">Logout</button>
             <button id="cc-beta-status-close-btn" class="cc-btn cc-btn-primary">Close</button>
         </div>
     `;
@@ -2846,6 +2860,21 @@ function showBetaStatusModal(name) {
     const { closeModal } = createBaseModal('cc-beta-status-modal', 'Beta Status', bodyHtml, '400px');
 
     document.getElementById('cc-beta-status-close-btn').addEventListener('click', closeModal);
+
+    document.getElementById('cc-beta-status-logout-btn').addEventListener('click', () => {
+        localStorage.removeItem(BETA_PARTNER_CODE_KEY);
+        localStorage.removeItem(BETA_USER_NAME_KEY);
+        closeModal();
+        showInfoModal('Logged Out', 'You have been logged out of the beta program.', 'success');
+    });
+
+    // Check if code exists in Supabase when modal opens
+    checkBetaCodeStatus(closeModal);
+
+    // Check every 5 seconds if code still exists
+    const checkInterval = setInterval(() => {
+        checkBetaCodeStatus(closeModal, checkInterval);
+    }, 5000);
 }
 
 function showFeatureControlsModal() {
@@ -5584,6 +5613,98 @@ function injectRefreshTweaksButton() {
     }
 }
 
+function refreshTweaks() {
+    try {
+        updateDefaultIcons();
+        updateCustomIcons();
+        injectHomeworkDateHint();
+        applyHomeworkRedesign();
+
+        // Remove disabled features
+        if (!isFeatureEnabledByKey(FEATURE_CONTACT_LINK_ENABLED_KEY, true)) {
+            document.querySelectorAll('.cc-improver-contact-link').forEach(el => el.remove());
+        }
+        if (!isFeatureEnabledByKey(FEATURE_CODE_WARNING_ENABLED_KEY, true)) {
+            document.querySelectorAll('.cc-improver-code-warning').forEach(el => el.remove());
+        }
+        if (!isFeatureEnabledByKey(FEATURE_MESSAGES_PLACEHOLDER_ENABLED_KEY, true)) {
+            document.querySelectorAll('.cc-improver-messages-guide').forEach(el => el.remove());
+        }
+        if (!isFeatureEnabledByKey(FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, true)) {
+            document.querySelectorAll('.cc-improver-announcements-desc').forEach(el => el.remove());
+        }
+        if (!isFeatureEnabledByKey(FEATURE_REFRESH_TWEAKS_ENABLED_KEY, true)) {
+            document.querySelectorAll('.cc-improver-refresh-button').forEach(el => el.remove());
+        }
+        if (!isFeatureEnabledByKey(FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, true)) {
+            document.querySelectorAll('.cc-improver-detention-success').forEach(el => el.remove());
+        }
+
+        // Apply enabled features with error handling
+        try {
+            if (isFeatureEnabledByKey(FEATURE_REPORT_CONCERN_ENABLED_KEY, true)) {
+                injectReportConcernWarning();
+            } else {
+                document.querySelectorAll('.cc-improver-concern-warning').forEach(el => el.remove());
+            }
+        } catch (error) {
+            console.warn('Failed to apply report concern warning:', error);
+        }
+
+        try {
+            if (isFeatureEnabledByKey(FEATURE_CONTACT_LINK_ENABLED_KEY, true)) {
+                injectContactLink();
+            }
+        } catch (error) {
+            console.warn('Failed to inject contact link:', error);
+        }
+
+        try {
+            if (isFeatureEnabledByKey(FEATURE_CODE_WARNING_ENABLED_KEY, true)) {
+                injectCodeWarning();
+            }
+        } catch (error) {
+            console.warn('Failed to inject code warning:', error);
+        }
+
+        if (false) {
+            try {
+                injectMessagesPlaceholderContent();
+            } catch (error) {
+                console.warn('Failed to inject messages placeholder:', error);
+            }
+        }
+
+        try {
+            if (isFeatureEnabledByKey(FEATURE_ANNOUNCEMENTS_DESCRIPTION_ENABLED_KEY, true)) {
+                injectAnnouncementsDescription();
+            }
+        } catch (error) {
+            console.warn('Failed to inject announcements description:', error);
+        }
+
+        try {
+            if (isFeatureEnabledByKey(FEATURE_REFRESH_TWEAKS_ENABLED_KEY, true)) {
+                injectRefreshTweaksButton();
+            }
+        } catch (error) {
+            console.warn('Failed to inject refresh tweaks button:', error);
+        }
+
+        try {
+            if (isFeatureEnabledByKey(FEATURE_DETENTION_CELEBRATION_ENABLED_KEY, true)) {
+                injectDetentionCelebration();
+            }
+        } catch (error) {
+            console.warn('Failed to inject detention celebration:', error);
+        }
+
+        console.log('ClassCharts Improver: Tweaks refreshed due to URL hash change');
+    } catch (error) {
+        console.warn('Error during tweak refresh:', error);
+    }
+}
+
 function initObserver() {
     let attempts = 0;
     const maxAttempts = 60; // Increased from 30 to 60 for better reliability
@@ -5736,6 +5857,9 @@ function initObserver() {
         }
         attempts++;
     }, 500);
+
+    // Listen for hash changes to refresh tweaks
+    window.addEventListener('hashchange', refreshTweaks);
 }
 
 if (isFeatureEnabledByKey(FEATURE_LOGIN_ALERT_ENABLED_KEY, true)) {
