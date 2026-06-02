@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_8_1';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_8_2';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -4010,7 +4010,7 @@ function showAboutModal() {
                 </a>
             </div>
             <div class="cc-settings-card">
-                <h4 class="cc-settings-title">Legal</h4>
+                <h4 class="cc-settings-title">Legal & Other Links</h4>
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                     <a href="https://classchartsimprover.pages.dev/privacy" target="_blank" style="
                         color: ${PRIMARY_BLUE};
@@ -4041,6 +4041,21 @@ function showAboutModal() {
                         text-align: center;
                     ">
                         Terms & Conditions
+                    </a>
+                    <a href="https://ccimprover.instatus.com" target="_blank" style="
+                        color: ${PRIMARY_BLUE};
+                        font-weight: 800;
+                        text-decoration: underline;
+                        display: inline-block;
+                        padding: 10px 12px;
+                        border-radius: 10px;
+                        border: 1px solid rgba(3,155,229,0.35);
+                        background: rgba(3,155,229,0.06);
+                        flex: 1;
+                        min-width: 140px;
+                        text-align: center;
+                    ">
+                        Service Status
                     </a>
                 </div>
             </div>
@@ -5110,9 +5125,9 @@ function showWelcomeModal(callback) {
         <div id="cc-welcome-modal-backdrop" class="cc-welcome-backdrop">
             <div id="cc-welcome-modal-content" class="cc-welcome-card">
                 <img src="${logoUrl}" alt="ClassCharts Improver Logo" class="cc-welcome-logo">
-                <h2 style="font-size: 1.75rem; margin-bottom: 10px; color: ${PRIMARY_BLUE}; font-weight: 700;">Update: New Features Arrived!</h2>
+                <h2 style="font-size: 1.75rem; margin-bottom: 10px; color: ${PRIMARY_BLUE}; font-weight: 700;">Your extension has been updated!</h2>
                 <p style="font-size: 1rem; color: #444; line-height: 1.6; margin-bottom: 30px;">
-                    We've rolled out a new update, including the ability to add <strong>Personal Notes</strong>, a <strong>Goals Tracker</strong>, and set a <strong>Custom Profile Photo</strong> right from the side menu. Check out the new, improved UI!
+                    We've rolled out a new update, and its been applied to your browser.
                 </p>
                 <button id="cc-welcome-dismiss-btn" class="cc-welcome-dismiss-btn">
                     Got it!
