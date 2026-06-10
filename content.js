@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_8_2';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_8_3';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -866,12 +866,12 @@ function showBetaCard() {
     betaCard.innerHTML = `
         <div class="cc-beta-card-content">
             <div class="cc-beta-card-icon">
-                <img src="${getAssetUrl('users.svg')}" alt="users icon">
+                <img src="${getAssetUrl('clipboard.svg')}" alt="Clipboard icon">
             </div>
             <div class="cc-beta-card-text">
-                <div class="cc-beta-card-title">Beta Program</div>
-                <div class="cc-beta-card-description">Test new features & give feedback</div>
-                <a href="https://classchartsimprover.pages.dev/beta" target="_blank" class="cc-beta-card-link">Join →</a>
+                <div class="cc-beta-card-title">Survey</div>
+                <div class="cc-beta-card-description">Give your feedback on ClassCharts Improver and it's features</div>
+                <a href="https://form.typeform.com/to/WmBopqMW" target="_blank" class="cc-beta-card-link">Join →</a>
             </div>
             <button class="cc-beta-card-dismiss" title="Don't show this again">×</button>
         </div>
@@ -883,10 +883,13 @@ function showBetaCard() {
         style.id = 'cc-beta-card-styles';
         style.textContent = `
             .cc-beta-card {
-                margin: 4px 12px;
-                border-radius: 8px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+                margin: 8px 12px;
+                border-radius: 16px;
+                background: #ffffff;
+                border: 1px solid #e5e7eb;
+                box-shadow:
+                0 1px 3px rgba(0, 0, 0, 0.08),
+                0 8px 24px rgba(0, 0, 0, 0.06);
                 overflow: hidden;
                 animation: slideDown 0.3s ease-out;
             }
@@ -5889,7 +5892,7 @@ injectDeveloperPreviewAlert();
 // Show beta program card
 showBetaCard();
 
-// Setup James Auth listener for global message handling
+// Setup James Auth listener for global message handling (for sending PostMessage?)
 setupJamesAuthListener();
 
 setupKeyComboListener();
