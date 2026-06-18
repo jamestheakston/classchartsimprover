@@ -1,7 +1,7 @@
 const NOTES_STORAGE_KEY = 'classcharts_personal_notes';
 const GOALS_STORAGE_KEY = 'classcharts_personal_goals';
 const PROFILE_PHOTO_STORAGE_KEY = 'classcharts_custom_profile_photo';
-const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_8_3';
+const CURRENT_VERSION_KEY = 'classcharts_improver_version_v5_8_4';
 const WELCOME_SHOWN_KEY = `classcharts_improver_welcome_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_SHOWN_KEY = `classcharts_improver_review_shown_${CURRENT_VERSION_KEY}`;
 const REVIEW_LAST_SHOWN_AT_KEY = 'classcharts_improver_review_last_shown_at';
@@ -30,6 +30,7 @@ const FEATURE_SHOW_SAFETY_BADGES_ENABLED_KEY = 'classcharts_improver_feature_sho
 const FEATURE_CLOUD_SYNC_ENABLED_KEY = 'classcharts_improver_feature_cloud_sync_enabled';
 const FEATURE_DEVELOPER_PREVIEW_ALERT_ENABLED_KEY = 'classcharts_improver_feature_developer_preview_alert_enabled';
 const FEATURE_HIDE_ENCRYPTION_WARNING_KEY = 'classcharts_improver_feature_hide_encryption_warning_enabled';
+const TESTING_REMOVAL_MODAL_ENABLED_KEY = 'classcharts_improver_testing_removal_modal_enabled';
 const BETA_CARD_DISMISSED_KEY = 'classcharts_improver_beta_card_dismissed';
 const BETA_PARTNER_CODE_KEY = 'classcharts_improver_beta_partner_code';
 const BETA_USER_NAME_KEY = 'classcharts_improver_beta_user_name';
@@ -866,12 +867,12 @@ function showBetaCard() {
     betaCard.innerHTML = `
         <div class="cc-beta-card-content">
             <div class="cc-beta-card-icon">
-                <img src="${getAssetUrl('clipboard.svg')}" alt="Clipboard icon">
+                <img src="${getAssetUrl('users.svg')}" alt="users icon">
             </div>
             <div class="cc-beta-card-text">
-                <div class="cc-beta-card-title">Survey</div>
-                <div class="cc-beta-card-description">Give your feedback on ClassCharts Improver and it's features</div>
-                <a href="https://form.typeform.com/to/WmBopqMW" target="_blank" class="cc-beta-card-link">Join →</a>
+                <div class="cc-beta-card-title">Beta Program</div>
+                <div class="cc-beta-card-description">Test new features & give feedback</div>
+                <a href="https://classchartsimprover.pages.dev/beta" target="_blank" class="cc-beta-card-link">Join →</a>
             </div>
             <button class="cc-beta-card-dismiss" title="Don't show this again">×</button>
         </div>
@@ -883,13 +884,10 @@ function showBetaCard() {
         style.id = 'cc-beta-card-styles';
         style.textContent = `
             .cc-beta-card {
-                margin: 8px 12px;
-                border-radius: 16px;
-                background: #ffffff;
-                border: 1px solid #e5e7eb;
-                box-shadow:
-                0 1px 3px rgba(0, 0, 0, 0.08),
-                0 8px 24px rgba(0, 0, 0, 0.06);
+                margin: 4px 12px;
+                border-radius: 8px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
                 overflow: hidden;
                 animation: slideDown 0.3s ease-out;
             }
@@ -2365,6 +2363,38 @@ function showAllSettingsModal() {
             <p style="font-size: 0.9rem; color: #6b7280; margin: 0; line-height: 1.4;">
                 Manage all ClassCharts Improver settings and customizations in one place.
             </p>
+        </div>
+        
+        <div class="cc-settings-card-soft" style="
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border: 1px solid #ef4444;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        ">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" style="color: #991b1b;">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <div>
+                    <div style="font-weight: 700; color: #991b1b; font-size: 16px; margin-bottom: 2px;">
+                        Important Notice
+                    </div>
+                    <div style="color: #7f1d1d; font-size: 13px; line-height: 1.4;">
+                        ClassCharts Improver will be discontinued
+                    </div>
+                </div>
+            </div>
+            
+            <div style="background: rgba(255, 255, 255, 0.5); border-radius: 8px; padding: 12px;">
+                <p style="margin: 0; color: #7f1d1d; font-size: 14px; line-height: 1.5;">
+                    <strong>This extension will be discontinued and removed from stores on July 31, 2026.</strong>
+                </p>
+                <p style="margin: 8px 0 0 0; color: #7f1d1d; font-size: 14px; line-height: 1.5;">
+                    For more information, please see: 
+                    <a href="https://classchartsimprover.pages.dev/content/emails/closure" target="_blank" style="color: #1e40af; text-decoration: underline; font-weight: 600;">closure announcement</a>
+                </p>
+            </div>
         </div>
         
         ${settingsCategories.map(category => `
@@ -4483,6 +4513,16 @@ function showDeveloperInfoModal() {
             </div>
             
             <div class="cc-settings-card-soft">
+                <h4 class="cc-settings-title" style="color: ${PRIMARY_BLUE}; margin-bottom: 8px;">Testing Options</h4>
+                <div style="display: flex; align-items: center; gap: 12px; padding: 8px; background: #f8f9fa; border-radius: 6px;">
+                    <input type="checkbox" id="cc-dev-test-removal-modal" ${getStoredBoolean(TESTING_REMOVAL_MODAL_ENABLED_KEY, false) ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: ${PRIMARY_BLUE};">
+                    <label for="cc-dev-test-removal-modal" style="font-size: 0.85rem; color: #374151; margin: 0; cursor: pointer;">
+                        Simulate July 31, 2026 (Test Removal Modal)
+                    </label>
+                </div>
+            </div>
+            
+            <div class="cc-settings-card-soft">
                 <p style="font-size: 0.85rem; color: #6b7280; margin: 0;">
                     <strong>Key Combo:</strong> <strong>Ctrl + D</strong> (Cmd + D on Mac) opens this panel
                 </p>
@@ -4533,6 +4573,12 @@ function showDeveloperInfoModal() {
     });
     
     document.getElementById('cc-dev-reload-btn').addEventListener('click', () => {
+        location.reload();
+    });
+    
+    // Testing Options
+    document.getElementById('cc-dev-test-removal-modal').addEventListener('change', (e) => {
+        setStoredBoolean(TESTING_REMOVAL_MODAL_ENABLED_KEY, e.target.checked);
         location.reload();
     });
     
@@ -5543,6 +5589,318 @@ function injectDeveloperPreviewAlert() {
     });
 }
 
+function injectDiscontinuationAlert() {
+    // Check if alert already exists
+    if (document.querySelector('.cc-discontinuation-alert')) {
+        return;
+    }
+
+    // Find the Home menu item
+    const menuItems = document.querySelectorAll('.desktop-drawer-pupil-menu-item');
+    const homeItem = Array.from(menuItems).find(item => {
+        const textSpan = item.querySelector('.MuiListItemText-primary');
+        return textSpan && (textSpan.textContent === 'Home' || textSpan.textContent === 'Overview');
+    });
+
+    if (!homeItem) {
+        // Try again later if menu not loaded yet
+        setTimeout(injectDiscontinuationAlert, 1000);
+        return;
+    }
+
+    // Create the discontinuation alert
+    const alertCard = document.createElement('div');
+    alertCard.className = 'cc-discontinuation-alert';
+    alertCard.innerHTML = `
+        <div class="cc-discontinuation-alert-content">
+            <div class="cc-discontinuation-alert-icon">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+            </div>
+            <div class="cc-discontinuation-alert-text">
+                <div class="cc-discontinuation-alert-title">Important Notice</div>
+                <div class="cc-discontinuation-alert-description">This extension will be discontinued on July 31, 2026</div>
+                <a href="https://classchartsimprover.pages.dev/content/emails/closure" target="_blank" class="cc-discontinuation-alert-link">Learn more →</a>
+            </div>
+            <button class="cc-discontinuation-alert-dismiss" title="Dismiss">×</button>
+        </div>
+    `;
+
+    // Add styles if not already added
+    if (!document.getElementById('cc-discontinuation-alert-styles')) {
+        const style = document.createElement('style');
+        style.id = 'cc-discontinuation-alert-styles';
+        style.textContent = `
+            .cc-discontinuation-alert {
+                margin: 4px 12px;
+                border-radius: 8px;
+                background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+                border: 1px solid #ef4444;
+                box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+                overflow: hidden;
+                animation: slideDown 0.3s ease-out;
+            }
+            
+            .cc-discontinuation-alert-content {
+                display: flex;
+                align-items: center;
+                padding: 10px 12px;
+                gap: 10px;
+                position: relative;
+            }
+            
+            .cc-discontinuation-alert-icon {
+                flex-shrink: 0;
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(255, 255, 255, 0.5);
+                border-radius: 6px;
+                color: #991b1b;
+            }
+            
+            .cc-discontinuation-alert-text {
+                flex: 1;
+                min-width: 0;
+            }
+            
+            .cc-discontinuation-alert-title {
+                font-weight: 700;
+                color: #991b1b;
+                font-size: 14px;
+                margin-bottom: 2px;
+            }
+            
+            .cc-discontinuation-alert-description {
+                color: #7f1d1d;
+                font-size: 12px;
+                line-height: 1.4;
+                margin-bottom: 4px;
+            }
+            
+            .cc-discontinuation-alert-link {
+                color: #1e40af;
+                font-size: 12px;
+                font-weight: 600;
+                text-decoration: none;
+            }
+            
+            .cc-discontinuation-alert-link:hover {
+                text-decoration: underline;
+            }
+            
+            .cc-discontinuation-alert-dismiss {
+                flex-shrink: 0;
+                background: none;
+                border: none;
+                color: #991b1b;
+                font-size: 20px;
+                line-height: 1;
+                cursor: pointer;
+                padding: 4px;
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 4px;
+                transition: background 0.2s;
+            }
+            
+            .cc-discontinuation-alert-dismiss:hover {
+                background: rgba(255, 255, 255, 0.3);
+            }
+            
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Insert before the Home menu item
+    homeItem.parentNode.insertBefore(alertCard, homeItem);
+
+    // Handle dismiss button
+    const dismissBtn = alertCard.querySelector('.cc-discontinuation-alert-dismiss');
+    dismissBtn.addEventListener('click', () => {
+        alertCard.remove();
+    });
+}
+
+function checkAndShowRemovalModal() {
+    const today = new Date();
+    const removalDate = new Date('2026-07-31');
+    const isTestingMode = getStoredBoolean(TESTING_REMOVAL_MODAL_ENABLED_KEY, false);
+    const isActualRemovalDate = today.toDateString() === removalDate.toDateString();
+    
+    // Show modal if testing mode is enabled OR if it's actually July 31, 2026
+    if (isTestingMode || isActualRemovalDate) {
+        // Check if modal already exists
+        if (document.querySelector('.cc-removal-modal-overlay')) {
+            return;
+        }
+
+        const bodyHtml = `
+            <div style="width: 100%; height: 70vh; display: flex; flex-direction: column;">
+                <iframe 
+                    src="https://classchartsimprover.pages.dev/removesteps" 
+                    style="width: 100%; height: 100%; border: none; border-radius: 8px;"
+                    sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                ></iframe>
+            </div>
+        `;
+
+        // Create modal without close button
+        const modalOverlay = document.createElement('div');
+        modalOverlay.className = 'cc-removal-modal-overlay';
+        modalOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999999;
+            animation: fadeIn 0.3s ease-out;
+        `;
+
+        const modalContent = document.createElement('div');
+        modalContent.className = 'cc-removal-modal-content';
+        modalContent.style.cssText = `
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: scaleIn 0.3s ease-out;
+            position: relative;
+        `;
+
+        const title = document.createElement('h2');
+        title.textContent = 'Extension Removal Notice';
+        title.style.cssText = `
+            margin: 0 0 16px 0;
+            font-size: 1.5rem;
+            color: #111827;
+            font-weight: 700;
+        `;
+
+        const description = document.createElement('p');
+        description.textContent = 'ClassCharts Improver has been discontinued. Please follow the steps below to remove the extension.';
+        description.style.cssText = `
+            margin: 0 0 20px 0;
+            font-size: 1rem;
+            color: #6b7280;
+            line-height: 1.5;
+        `;
+
+        const bodyContainer = document.createElement('div');
+        bodyContainer.innerHTML = bodyHtml;
+
+        modalContent.appendChild(title);
+        modalContent.appendChild(description);
+        modalContent.appendChild(bodyContainer);
+        modalOverlay.appendChild(modalContent);
+        document.body.appendChild(modalOverlay);
+
+        // Add "Disable testing" text in corner if in testing mode
+        if (isTestingMode && !isActualRemovalDate) {
+            const testingText = document.createElement('div');
+            testingText.className = 'cc-testing-mode-indicator';
+            testingText.textContent = 'Disable testing';
+            testingText.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #ef4444;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 8px;
+                font-weight: 600;
+                font-size: 14px;
+                cursor: pointer;
+                z-index: 1000000;
+                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+                animation: slideInRight 0.3s ease-out;
+            `;
+            
+            testingText.addEventListener('click', () => {
+                setStoredBoolean(TESTING_REMOVAL_MODAL_ENABLED_KEY, false);
+                testingText.remove();
+                modalOverlay.remove();
+            });
+            
+            document.body.appendChild(testingText);
+        }
+
+        // Prevent closing with escape key
+        document.addEventListener('keydown', function preventEscape(e) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+
+        // Prevent clicking outside to close
+        modalOverlay.addEventListener('click', function preventClickOutside(e) {
+            if (e.target === modalOverlay) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+
+        // Add animation styles
+        if (!document.getElementById('cc-removal-modal-styles')) {
+            const style = document.createElement('style');
+            style.id = 'cc-removal-modal-styles';
+            style.textContent = `
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes scaleIn {
+                    from { 
+                        opacity: 0;
+                        transform: scale(0.9);
+                    }
+                    to { 
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+                @keyframes slideInRight {
+                    from {
+                        opacity: 0;
+                        transform: translateX(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+}
+
 function injectDetentionCelebration() {
     const detentionPage = document.querySelector('.detentions-page');
     if (!detentionPage) return;
@@ -5889,10 +6247,16 @@ if (isFeatureEnabledByKey(FEATURE_LOGIN_ALERT_ENABLED_KEY, true)) {
 
 injectDeveloperPreviewAlert();
 
+// Show discontinuation alert
+injectDiscontinuationAlert();
+
+// Check if it's July 31, 2026 and show removal modal
+checkAndShowRemovalModal();
+
 // Show beta program card
 showBetaCard();
 
-// Setup James Auth listener for global message handling (for sending PostMessage?)
+// Setup James Auth listener for global message handling
 setupJamesAuthListener();
 
 setupKeyComboListener();
